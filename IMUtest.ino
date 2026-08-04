@@ -14,6 +14,12 @@ BNO080 myIMU;
 float qOffsetReal = 1.0;
 float qOffsetK = 0.0;
 
+float pwmFreq = 50.0;
+float pwmMin = 500;
+float pwmMax = 2500;
+float pwmMid = 1500;
+
+
 void setup() {
   // Initialize Serial port for CSV output to Processing
   Serial.begin(115200); 
@@ -23,10 +29,21 @@ void setup() {
   pinMode(BNO085_CS, OUTPUT);
   pinMode(BNO085_INT, INPUT_PULLUP); 
 
-  // Configure Teensy native PWM for 50Hz and 16-bit resolution
+  // Configure Teensy native PWM for 333Hz (PTK 8810 SSG-D spec) and 16-bit resolution
   pinMode(PWM_PIN, OUTPUT);
-  analogWriteFrequency(PWM_PIN, 50); 
+  // Set Teensy 4.1 Pin 2 (EMC_04 / PAD control) to Maximum Drive Strength (24mA)
+  *(portConfigRegister(PWM_PIN)) = IOMUXC_PAD_DSE(7) | IOMUXC_PAD_SPEED(3);
+  analogWriteFrequency(PWM_PIN, pwmFreq); // 50 for micro, 333 for 8810
   analogWriteResolution(16); // Duty cycle range: 0 to 65535
+
+  // ==========================================================
+  // --- PWM KICKSTART ---
+  // Send a valid 1520us neutral pulse immediately to prevent 
+  // the PTK 8810 from entering a signal-loss lockout state 
+  // during the 2+ second IMU calibration delay.
+  // ==========================================================
+  uint16_t neutral_duty = (uint16_t)((1500.0 / (1000000.0 / pwmFreq)) * 65535.0);
+  analogWrite(PWM_PIN, neutral_duty);
 
   SPI.begin();
 
@@ -109,19 +126,17 @@ void loop() {
     float roll_rad = atan2(2.0 * (corr_qR * corr_qI + corr_qJ * corr_qK), 
                            1.0 - 2.0 * (corr_qI * corr_qI + corr_qJ * corr_qJ));
 
-    // Map the roll angle (-PI to PI) to a 1000 - 2000 microsecond pulse width
-    // 0 radians (level) = 1500 us
+    // Map roll angle to pulse width with 1520us neutral position
     float mag_factor = 4;
     float offset = 0;
-    float pulse_us = 1500.0 + (mag_factor* roll_rad / PI) * 500.0 + offset;
+    float pulse_us = pwmMid + (mag_factor * roll_rad / PI) * 1000.0 + offset;
     
-    // Constrain to strictly valid bounds for safety
-    pulse_us = constrain(pulse_us, 0.0, 3000.0);
+    // Constrain to strictly valid bounds for PTK 8810 SSG-D spec (900us - 2100us)
+    pulse_us = constrain(pulse_us, pwmMin, pwmMax);
 
-    // Convert microseconds to a 16-bit PWM duty cycle value
-    // 50Hz frequency = 20,000 microseconds total period
-    uint16_t duty_cycle = (uint16_t)((pulse_us / 20000.0) * 65535.0);
-    //uint16_t duty_cycle = map(pulse_us, 1000, 2000, )
+    // Convert microseconds to a 16-bit PWM duty cycle value for 333Hz
+    // 333Hz frequency = ~3003.003 microseconds total period (1,000,000 / 333)
+    uint16_t duty_cycle = (uint16_t)((pulse_us / (1000000.0 / pwmFreq)) * 65535.0);  // 333 for 8810, 50 for micro
     
     // Output the PWM signal
     analogWrite(PWM_PIN, duty_cycle);
@@ -137,7 +152,5 @@ void loop() {
     Serial.print(corr_qK, 7);
     Serial.print(",");
     Serial.println(corr_qR, 7);
-    //Serial.print(", roll: ");
-    //Serial.println(pulse_us, 5);
   }
 }
