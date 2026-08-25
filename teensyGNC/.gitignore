@@ -1,0 +1,15 @@
+# KiCad temporary & lock files
+*.lck
+*.bak
+*_autosave*
+*.prl
+*-cache.lib
+
+# Output build files (optional: un-comment if you don't want plot outputs tracked)
+# /plots/
+# *.gbr
+# *.drl
+
+# System files
+.DS_Store
+Thumbs.db
