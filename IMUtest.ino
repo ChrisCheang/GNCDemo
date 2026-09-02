@@ -1,17 +1,21 @@
 #include <SPI.h>
 #include "SparkFun_BNO080_Arduino_Library.h" 
 #include <Adafruit_DPS310.h> 
+#include <Servo.h> 
 
 #define BNO085_CS   10
 #define BNO085_INT  9
 #define BNO085_RST  8
 #define DPS_CS      4   
 
-#define PWM_PIN_ROLL  2 
-#define PWM_PIN_PITCH 3 
+#define PWM_PIN_ROLL  5 
+#define PWM_PIN_PITCH 6 
+#define ESC_PIN       2   
+#define POT_PIN       14  
 
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
+Servo esc;
 
 float qOffsetReal = 1.0;
 float qOffsetK = 0.0;
@@ -22,7 +26,24 @@ float pwmMin = 500;
 float pwmMax = 2500;
 float pwmMid = 1520;
 
+const int ESC_MIN_PULSE = 1000; 
+const int ESC_MAX_PULSE = 2000; 
+const int ESC_DEADBAND  = 1040; 
+
 void setup() {
+  Serial.begin(115200);
+  
+  // Wait up to 3 seconds for the Serial Monitor window to open
+  unsigned long serialStartTime = millis();
+  while (!Serial && (millis() - serialStartTime < 3000)) {
+    delay(10);
+  }
+  
+  Serial.println("Teensy boot started...");
+
+  esc.attach(ESC_PIN, ESC_MIN_PULSE, ESC_MAX_PULSE);
+  esc.writeMicroseconds(ESC_MIN_PULSE);
+
   pinMode(BNO085_CS, OUTPUT);
   pinMode(DPS_CS, OUTPUT);
   digitalWrite(BNO085_CS, HIGH);
@@ -31,9 +52,6 @@ void setup() {
   pinMode(BNO085_RST, OUTPUT);
   digitalWrite(BNO085_RST, HIGH);
 
-  Serial.begin(115200); 
-  delay(500); 
-  
   pinMode(BNO085_INT, INPUT_PULLUP); 
 
   pinMode(PWM_PIN_ROLL, OUTPUT);
@@ -51,59 +69,43 @@ void setup() {
   analogWrite(PWM_PIN_PITCH, neutral_duty);
 
   SPI.begin();
+  Serial.println("SPI initialized.");
 
-  // Initialize DPS310 over Hardware SPI
+  // Initialize DPS310 over Hardware SPI (Non-blocking check)
   if (!dps.begin_SPI(DPS_CS)) {
-    Serial.println("ERROR: DPS310 not detected.");
-    while (1) { delay(10); }
+    Serial.println("WARNING: DPS310 not detected! Check wiring.");
+  } else {
+    Serial.println("DPS310 detected.");
+    dps.configurePressure(DPS310_64HZ, DPS310_64SAMPLES);
+    dps.configureTemperature(DPS310_64HZ, DPS310_64SAMPLES);
   }
 
-  // Set typical high-precision oversampling rate for altitude tracking
-  dps.configurePressure(DPS310_64HZ, DPS310_64SAMPLES);
-  dps.configureTemperature(DPS310_64HZ, DPS310_64SAMPLES);
-
-  // Initialize BNO085
+  // Initialize BNO085 (Non-blocking check)
   if (myIMU.beginSPI(BNO085_CS, 255, BNO085_INT, BNO085_RST, 3000000) == false) {
-    Serial.println("ERROR: BNO085 not detected.");
-    while (1) { delay(10); } 
+    Serial.println("WARNING: BNO085 not detected! Check SPI/CS/INT/RST wiring.");
+  } else {
+    Serial.println("BNO085 detected.");
+    myIMU.enableRotationVector(2.5); 
   }
 
-  // Calibration handover
-  myIMU.enableRotationVector(2.5); 
   unsigned long startTime = millis();
   while (millis() - startTime < 2000) {
     if (myIMU.dataAvailable()) { myIMU.getQuatReal(); }
   }
 
-  while (!myIMU.dataAvailable()) { delay(1); } 
-  float qI_9 = myIMU.getQuatI();
-  float qJ_9 = myIMU.getQuatJ();
-  float qK_9 = myIMU.getQuatK();
-  float qR_9 = myIMU.getQuatReal();
-  float yaw9 = atan2(2.0 * (qR_9 * qK_9 + qI_9 * qJ_9), 1.0 - 2.0 * (qJ_9 * qJ_9 + qK_9 * qK_9));
-
-  myIMU.enableRotationVector(0); 
-  delay(50);
-  while (myIMU.dataAvailable()) { myIMU.getQuatReal(); } 
-  
-  myIMU.enableGameRotationVector(2.5); 
-  delay(50);
-
-  while (!myIMU.dataAvailable()) { delay(1); } 
-  float qI_6 = myIMU.getQuatI();
-  float qJ_6 = myIMU.getQuatJ();
-  float qK_6 = myIMU.getQuatK();
-  float qR_6 = myIMU.getQuatReal();
-  float yaw6 = atan2(2.0 * (qR_6 * qK_6 + qI_6 * qJ_6), 1.0 - 2.0 * (qJ_6 * qJ_6 + qK_6 * qK_6));
-
-  float yawOffset = yaw9 - yaw6;
-  qOffsetReal = cos(yawOffset / 2.0);
-  qOffsetK = sin(yawOffset / 2.0);
-
-  // Baseline pressure calculation
+  // Attempt baseline pressure capture with timeout
+  unsigned long pressureTimeout = millis();
   sensors_event_t temp_event, pressure_event;
-  while (!dps.getEvents(&temp_event, &pressure_event)) { delay(10); }
+  while (!dps.getEvents(&temp_event, &pressure_event)) {
+    if (millis() - pressureTimeout > 3000) {
+      Serial.println("WARNING: DPS310 baseline pressure timeout.");
+      pressure_event.pressure = 101325.0; // Fallback standard pressure
+      break;
+    }
+    delay(10);
+  }
   baselinePressure = pressure_event.pressure;
+  Serial.println("Setup complete. Entering loop...");
 }
 
 void loop() {
@@ -141,6 +143,15 @@ void loop() {
     analogWrite(PWM_PIN_ROLL, duty_cycle_roll);
     analogWrite(PWM_PIN_PITCH, duty_cycle_pitch);
 
+    int rawAnalog = analogRead(POT_PIN);
+    int pulse_us_esc = map(rawAnalog, 0, 1023, ESC_MIN_PULSE, ESC_MAX_PULSE);
+    
+    if (pulse_us_esc < ESC_DEADBAND) {
+      pulse_us_esc = ESC_MIN_PULSE;
+    }
+    
+    esc.writeMicroseconds(pulse_us_esc);
+
     sensors_event_t temp_event, pressure_event;
     if (dps.getEvents(&temp_event, &pressure_event)) {
       float alt_change_m = 44330.0 * (1.0 - pow(pressure_event.pressure / baselinePressure, 0.190295));
@@ -153,7 +164,9 @@ void loop() {
       Serial.print(",");
       Serial.print(corr_qR, 7);
       Serial.print(",");
-      Serial.println(alt_change_m, 7);
+      Serial.print(alt_change_m, 7);
+      Serial.print(",");
+      Serial.println(pulse_us_esc);
     }
   }
 }
