@@ -7450,7 +7450,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "00cbdf30-da98-4f89-9f6c-5eb42b76d929")
-		(property "Reference" "#PWR028"
+		(property "Reference" "#PWR035"
 			(at 207.01 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -7510,7 +7510,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR028")
+					(reference "#PWR035")
 					(unit 1)
 				)
 			)
@@ -7528,7 +7528,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "03fe4a83-4413-43a9-94f9-8cc60dd0242a")
-		(property "Reference" "#PWR038"
+		(property "Reference" "#PWR044"
 			(at 250.19 44.45 0)
 			(hide yes)
 			(show_name no)
@@ -7588,7 +7588,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR038")
+					(reference "#PWR044")
 					(unit 1)
 				)
 			)
@@ -7616,7 +7616,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "Servo_2_PWM_1x03"
+		(property "Value" "Servo_2_PWM"
 			(at 54.356 84.582 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7689,7 +7689,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "088404e5-a29a-4db6-8d38-b84b3fe0bae9")
-		(property "Reference" "R13"
+		(property "Reference" "R4"
 			(at 84.836 71.882 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7751,7 +7751,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R13")
+					(reference "R4")
 					(unit 1)
 				)
 			)
@@ -7768,7 +7768,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "0919e737-c619-46ee-bfd4-de2e3a812873")
-		(property "Reference" "U5"
+		(property "Reference" "U4"
 			(at 157.48 172.72 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7778,7 +7778,7 @@
 				)
 			)
 		)
-		(property "Value" "DPS310"
+		(property "Value" "4494"
 			(at 161.036 176.784 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -7845,7 +7845,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "U5")
+					(reference "U4")
 					(unit 1)
 				)
 			)
@@ -7884,7 +7884,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_6.3x5.4"
+		(property "Footprint" "Capacitor_Tantalum_SMD:CP_EIA-7343-43_Kemet-X"
 			(at 32.7152 113.03 0)
 			(hide yes)
 			(show_name no)
@@ -7944,7 +7944,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "12539d5a-1180-455b-9f2f-f35e22c2936e")
-		(property "Reference" "#PWR034"
+		(property "Reference" "#PWR040"
 			(at 219.71 82.55 0)
 			(hide yes)
 			(show_name no)
@@ -8004,7 +8004,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR034")
+					(reference "#PWR040")
 					(unit 1)
 				)
 			)
@@ -8021,7 +8021,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "12b0da87-5426-4bb5-8bbf-7c6ccfc4e76f")
-		(property "Reference" "R10"
+		(property "Reference" "R6"
 			(at 98.806 42.926 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8083,7 +8083,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R10")
+					(reference "R6")
 					(unit 1)
 				)
 			)
@@ -8101,7 +8101,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1463fd1c-14c9-4efe-be0c-4d59c687fc28")
-		(property "Reference" "#PWR042"
+		(property "Reference" "#PWR048"
 			(at 257.81 39.37 0)
 			(hide yes)
 			(show_name no)
@@ -8161,7 +8161,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR042")
+					(reference "#PWR048")
 					(unit 1)
 				)
 			)
@@ -8179,7 +8179,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "15a57a38-9c61-4aa4-b652-ee4be5c462c1")
-		(property "Reference" "#PWR049"
+		(property "Reference" "#PWR017"
 			(at 101.6 41.91 0)
 			(hide yes)
 			(show_name no)
@@ -8239,7 +8239,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR049")
+					(reference "#PWR017")
 					(unit 1)
 				)
 			)
@@ -8337,7 +8337,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1d4a3154-38d3-43ed-91cd-5138c94afb28")
-		(property "Reference" "J11"
+		(property "Reference" "J12"
 			(at 265.43 36.8299 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8348,7 +8348,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TO_92_2_JST_PH"
+		(property "Value" "Hall_2_PH"
 			(at 265.43 39.3699 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8404,7 +8404,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J11")
+					(reference "J12")
 					(unit 1)
 				)
 			)
@@ -8422,7 +8422,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "1e87754f-9da5-47d5-aa80-f8b0e9744fa6")
-		(property "Reference" "#PWR015"
+		(property "Reference" "#PWR011"
 			(at 78.74 135.89 0)
 			(hide yes)
 			(show_name no)
@@ -8482,7 +8482,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR015")
+					(reference "#PWR011")
 					(unit 1)
 				)
 			)
@@ -8499,7 +8499,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "223229a7-b98f-45a4-80c1-977a839bd718")
-		(property "Reference" "R11"
+		(property "Reference" "R3"
 			(at 67.564 157.226 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8561,7 +8561,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R11")
+					(reference "R3")
 					(unit 1)
 				)
 			)
@@ -8579,7 +8579,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "223e7bc2-a55a-4f13-8a66-04b2fdef3816")
-		(property "Reference" "#PWR040"
+		(property "Reference" "#PWR046"
 			(at 250.19 77.47 0)
 			(hide yes)
 			(show_name no)
@@ -8639,7 +8639,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR040")
+					(reference "#PWR046")
 					(unit 1)
 				)
 			)
@@ -8657,7 +8657,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "23b77ccc-5293-4940-a85d-97a6df4438cd")
-		(property "Reference" "U4"
+		(property "Reference" "U3"
 			(at 123.19 71.12 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8728,7 +8728,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "U4")
+					(reference "U3")
 					(unit 1)
 				)
 			)
@@ -8745,7 +8745,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "23c3a334-8a53-4f08-a29e-be9a2f0c1e3c")
-		(property "Reference" "C6"
+		(property "Reference" "C8"
 			(at 130.556 86.614 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8807,7 +8807,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "C6")
+					(reference "C8")
 					(unit 1)
 				)
 			)
@@ -8824,7 +8824,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "256bb622-f3fb-4e72-960f-00ea0bd9d087")
-		(property "Reference" "C5"
+		(property "Reference" "C7"
 			(at 115.57 91.186 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8886,7 +8886,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "C5")
+					(reference "C7")
 					(unit 1)
 				)
 			)
@@ -8903,7 +8903,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "295c29ad-e7f0-43b1-95bc-d212507f97e7")
-		(property "Reference" "#PWR019"
+		(property "Reference" "#PWR021"
 			(at 113.03 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -8963,7 +8963,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR019")
+					(reference "#PWR021")
 					(unit 1)
 				)
 			)
@@ -8980,7 +8980,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "2cfef085-791c-4b19-8ae3-708e85aaaff4")
-		(property "Reference" "J8"
+		(property "Reference" "J10"
 			(at 233.68 91.4399 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8991,7 +8991,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "MTF_01P_JST_SH"
+		(property "Value" "ToF_OF_SH"
 			(at 221.996 99.568 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9051,7 +9051,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J8")
+					(reference "J10")
 					(unit 1)
 				)
 			)
@@ -9068,7 +9068,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "2e3952e7-e57b-46fb-8f59-c9fddb357691")
-		(property "Reference" "#PWR025"
+		(property "Reference" "#PWR030"
 			(at 138.43 77.47 0)
 			(hide yes)
 			(show_name no)
@@ -9128,7 +9128,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR025")
+					(reference "#PWR030")
 					(unit 1)
 				)
 			)
@@ -9226,7 +9226,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "30773922-27af-4b0b-8de6-ff94807dce5a")
-		(property "Reference" "#PWR017"
+		(property "Reference" "#PWR014"
 			(at 85.09 33.02 0)
 			(hide yes)
 			(show_name no)
@@ -9287,7 +9287,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR017")
+					(reference "#PWR014")
 					(unit 1)
 				)
 			)
@@ -9305,7 +9305,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "3e9735de-22aa-493d-a4ad-45c5ada695d5")
-		(property "Reference" "#PWR053"
+		(property "Reference" "#PWR022"
 			(at 114.3 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -9365,7 +9365,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR053")
+					(reference "#PWR022")
 					(unit 1)
 				)
 			)
@@ -9393,7 +9393,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "Servo_1_PWM_1x03"
+		(property "Value" "Servo_1_PWM"
 			(at 54.864 113.03 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9467,7 +9467,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "4bb6d64f-471d-4366-bf0e-6a9d81f3138b")
-		(property "Reference" "#PWR030"
+		(property "Reference" "#PWR037"
 			(at 214.63 45.72 0)
 			(hide yes)
 			(show_name no)
@@ -9527,7 +9527,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR030")
+					(reference "#PWR037")
 					(unit 1)
 				)
 			)
@@ -9545,7 +9545,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "4d7ae89c-0313-4e6b-983a-941adb601f81")
-		(property "Reference" "#PWR043"
+		(property "Reference" "#PWR049"
 			(at 257.81 54.61 0)
 			(hide yes)
 			(show_name no)
@@ -9605,7 +9605,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR043")
+					(reference "#PWR049")
 					(unit 1)
 				)
 			)
@@ -9623,7 +9623,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "556d4e61-b06e-42fc-804f-301228827ee8")
-		(property "Reference" "#PWR026"
+		(property "Reference" "#PWR032"
 			(at 168.91 170.18 0)
 			(hide yes)
 			(show_name no)
@@ -9683,7 +9683,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR026")
+					(reference "#PWR032")
 					(unit 1)
 				)
 			)
@@ -9722,7 +9722,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:CP_Elec_6.3x5.4"
+		(property "Footprint" "Capacitor_Tantalum_SMD:CP_EIA-7343-43_Kemet-X"
 			(at 53.0352 97.79 0)
 			(hide yes)
 			(show_name no)
@@ -9782,7 +9782,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "5b89803d-57ab-41a1-a571-64667deab3c2")
-		(property "Reference" "#PWR047"
+		(property "Reference" "#PWR027"
 			(at 125.73 41.91 0)
 			(hide yes)
 			(show_name no)
@@ -9842,7 +9842,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR047")
+					(reference "#PWR027")
 					(unit 1)
 				)
 			)
@@ -9860,7 +9860,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "6116b971-de53-4db8-9d09-95aeff665516")
-		(property "Reference" "#PWR07"
+		(property "Reference" "#PWR03"
 			(at 40.64 133.35 0)
 			(hide yes)
 			(show_name no)
@@ -9920,7 +9920,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR07")
+					(reference "#PWR03")
 					(unit 1)
 				)
 			)
@@ -9937,7 +9937,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "62f4424b-18f2-4f8d-bc52-ee22e6cc201d")
-		(property "Reference" "J7"
+		(property "Reference" "J9"
 			(at 227.33 71.1199 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9948,7 +9948,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "I2C_INA_BM_JST_GH"
+		(property "Value" "Batt_Mon_GH"
 			(at 220.726 79.756 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10007,7 +10007,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J7")
+					(reference "J9")
 					(unit 1)
 				)
 			)
@@ -10024,7 +10024,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "64d965eb-8952-41a5-b2a3-93c1e198e7ba")
-		(property "Reference" "C8"
+		(property "Reference" "C5"
 			(at 83.82 76.1999 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10088,7 +10088,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "C8")
+					(reference "C5")
 					(unit 1)
 				)
 			)
@@ -10106,7 +10106,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "6b2e6cef-63fc-439a-aa3d-580777f40927")
-		(property "Reference" "#PWR051"
+		(property "Reference" "#PWR034"
 			(at 205.74 77.47 0)
 			(hide yes)
 			(show_name no)
@@ -10166,7 +10166,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR051")
+					(reference "#PWR034")
 					(unit 1)
 				)
 			)
@@ -10183,7 +10183,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "72f906a2-bf38-4900-bb7c-51581ce199c2")
-		(property "Reference" "R8"
+		(property "Reference" "R9"
 			(at 122.936 42.926 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10245,7 +10245,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R8")
+					(reference "R9")
 					(unit 1)
 				)
 			)
@@ -10263,7 +10263,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "738a9ef7-35f7-4b92-9b67-46403890a684")
-		(property "Reference" "#PWR035"
+		(property "Reference" "#PWR041"
 			(at 222.25 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -10323,7 +10323,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR035")
+					(reference "#PWR041")
 					(unit 1)
 				)
 			)
@@ -10341,7 +10341,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "73ac7932-7539-4695-8c6d-b70dfcd5e0f7")
-		(property "Reference" "#PWR039"
+		(property "Reference" "#PWR045"
 			(at 250.19 59.69 0)
 			(hide yes)
 			(show_name no)
@@ -10401,7 +10401,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR039")
+					(reference "#PWR045")
 					(unit 1)
 				)
 			)
@@ -10418,7 +10418,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "7905ec85-3245-434d-917e-928ccc63677f")
-		(property "Reference" "J9"
+		(property "Reference" "J8"
 			(at 153.67 20.3199 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10429,7 +10429,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "LC29H_1x04"
+		(property "Value" "LC29H"
 			(at 148.59 28.448 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10488,7 +10488,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J9")
+					(reference "J8")
 					(unit 1)
 				)
 			)
@@ -10575,7 +10575,7 @@
 	)
 	(symbol
 		(lib_id "Connector_Generic:Conn_01x02")
-		(at 33.02 26.67 0)
+		(at 46.99 27.94 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -10585,8 +10585,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "7e67a508-5412-4304-9a3d-5d51dae8c3db")
-		(property "Reference" "J1"
-			(at 35.56 26.6699 0)
+		(property "Reference" "J2"
+			(at 49.53 27.9399 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10596,8 +10596,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "5V_In_JST_XH"
-			(at 35.56 29.2099 0)
+		(property "Value" "5V_In_XH"
+			(at 49.53 30.4799 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -10608,7 +10608,7 @@
 			)
 		)
 		(property "Footprint" "Connector_JST:JST_XH_B2B-XH-AM_1x02_P2.50mm_Vertical"
-			(at 33.02 26.67 0)
+			(at 46.99 27.94 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10619,7 +10619,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 33.02 26.67 0)
+			(at 46.99 27.94 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10630,7 +10630,7 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
-			(at 33.02 26.67 0)
+			(at 46.99 27.94 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10649,7 +10649,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J1")
+					(reference "J2")
 					(unit 1)
 				)
 			)
@@ -10667,7 +10667,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "7eaee931-1db8-42a1-b273-a4b6c1af1b93")
-		(property "Reference" "U3"
+		(property "Reference" "U2"
 			(at 97.79 142.24 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10917,7 +10917,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "U3")
+					(reference "U2")
 					(unit 1)
 				)
 			)
@@ -10934,7 +10934,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "89b11228-079a-4a69-be59-03304308abe8")
-		(property "Reference" "#PWR057"
+		(property "Reference" "#PWR012"
 			(at 80.01 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -10994,7 +10994,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR057")
+					(reference "#PWR012")
 					(unit 1)
 				)
 			)
@@ -11002,7 +11002,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 27.94 29.21 0)
+		(at 41.91 30.48 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11012,8 +11012,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "8d31bf65-bd60-45cf-b7b3-f51063254c95")
-		(property "Reference" "#PWR04"
-			(at 27.94 35.56 0)
+		(property "Reference" "#PWR05"
+			(at 41.91 36.83 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11024,7 +11024,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 27.94 34.29 0)
+			(at 41.91 35.56 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11034,7 +11034,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 27.94 29.21 0)
+			(at 41.91 30.48 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11045,7 +11045,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 27.94 29.21 0)
+			(at 41.91 30.48 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11056,7 +11056,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 27.94 29.21 0)
+			(at 41.91 30.48 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11072,7 +11072,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR04")
+					(reference "#PWR05")
 					(unit 1)
 				)
 			)
@@ -11090,7 +11090,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "8f766d14-1bca-40db-b1a9-13dbf039e67c")
-		(property "Reference" "#PWR029"
+		(property "Reference" "#PWR036"
 			(at 210.82 40.64 0)
 			(hide yes)
 			(show_name no)
@@ -11150,7 +11150,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR029")
+					(reference "#PWR036")
 					(unit 1)
 				)
 			)
@@ -11168,7 +11168,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "92354838-f865-4d94-bb3f-437f9bbd0b09")
-		(property "Reference" "#PWR041"
+		(property "Reference" "#PWR047"
 			(at 257.81 22.86 0)
 			(hide yes)
 			(show_name no)
@@ -11228,7 +11228,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR041")
+					(reference "#PWR047")
 					(unit 1)
 				)
 			)
@@ -11245,7 +11245,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "9337cf8e-468f-4ac7-abde-f8e1d9a9eaff")
-		(property "Reference" "R12"
+		(property "Reference" "R5"
 			(at 89.916 42.926 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11307,7 +11307,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R12")
+					(reference "R5")
 					(unit 1)
 				)
 			)
@@ -11325,7 +11325,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "9338873f-b169-49bb-a6f0-51f154ac075a")
-		(property "Reference" "J12"
+		(property "Reference" "J13"
 			(at 265.43 52.0699 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11336,7 +11336,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TO_92_3_JST_PH"
+		(property "Value" "Hall_3_PH"
 			(at 265.43 54.6099 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11392,7 +11392,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J12")
+					(reference "J13")
 					(unit 1)
 				)
 			)
@@ -11410,7 +11410,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "96e99012-a88b-4fcc-80c8-3e13704f56d8")
-		(property "Reference" "#PWR032"
+		(property "Reference" "#PWR029"
 			(at 137.16 26.67 0)
 			(hide yes)
 			(show_name no)
@@ -11470,7 +11470,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR032")
+					(reference "#PWR029")
 					(unit 1)
 				)
 			)
@@ -11488,7 +11488,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "97b471a9-84d8-4d52-8f04-106751ea849c")
-		(property "Reference" "#PWR054"
+		(property "Reference" "#PWR015"
 			(at 92.71 39.37 0)
 			(hide yes)
 			(show_name no)
@@ -11548,7 +11548,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR054")
+					(reference "#PWR015")
 					(unit 1)
 				)
 			)
@@ -11565,7 +11565,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "985c2228-8dbb-404c-9e83-d9ea93564a7f")
-		(property "Reference" "#PWR033"
+		(property "Reference" "#PWR039"
 			(at 219.71 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -11625,7 +11625,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR033")
+					(reference "#PWR039")
 					(unit 1)
 				)
 			)
@@ -11642,7 +11642,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "9d29817a-5215-4723-bd9b-974829b9f301")
-		(property "Reference" "R7"
+		(property "Reference" "R11"
 			(at 133.096 42.926 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11704,7 +11704,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R7")
+					(reference "R11")
 					(unit 1)
 				)
 			)
@@ -11712,7 +11712,7 @@
 	)
 	(symbol
 		(lib_id "power:+5V")
-		(at 27.94 26.67 0)
+		(at 41.91 27.94 0)
 		(unit 1)
 		(body_style 1)
 		(exclude_from_sim no)
@@ -11722,8 +11722,8 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "a52a8720-9491-402c-9cb0-7a65c9f5a435")
-		(property "Reference" "#PWR03"
-			(at 27.94 30.48 0)
+		(property "Reference" "#PWR04"
+			(at 41.91 31.75 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11734,7 +11734,7 @@
 			)
 		)
 		(property "Value" "+5V"
-			(at 27.94 21.59 0)
+			(at 41.91 22.86 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -11744,7 +11744,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 27.94 26.67 0)
+			(at 41.91 27.94 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11755,7 +11755,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 27.94 26.67 0)
+			(at 41.91 27.94 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11766,7 +11766,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+5V\""
-			(at 27.94 26.67 0)
+			(at 41.91 27.94 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11782,7 +11782,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR03")
+					(reference "#PWR04")
 					(unit 1)
 				)
 			)
@@ -11810,7 +11810,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "ESC_2_PWM_1x03"
+		(property "Value" "ESC_2_PWM"
 			(at 42.164 130.048 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11884,7 +11884,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "ab7d5c7c-1bcf-46a7-b7be-51f1cf2a4c39")
-		(property "Reference" "#PWR022"
+		(property "Reference" "#PWR024"
 			(at 123.19 100.33 0)
 			(hide yes)
 			(show_name no)
@@ -11944,7 +11944,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR022")
+					(reference "#PWR024")
 					(unit 1)
 				)
 			)
@@ -11961,7 +11961,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "b019480f-8c62-4ccc-b139-fbd096478f9d")
-		(property "Reference" "R3"
+		(property "Reference" "R10"
 			(at 125.476 122.936 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12023,7 +12023,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R3")
+					(reference "R10")
 					(unit 1)
 				)
 			)
@@ -12041,7 +12041,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b0342f79-d174-47fc-989d-0e3f93f30625")
-		(property "Reference" "#PWR050"
+		(property "Reference" "#PWR042"
 			(at 223.52 64.77 0)
 			(hide yes)
 			(show_name no)
@@ -12101,7 +12101,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR050")
+					(reference "#PWR042")
 					(unit 1)
 				)
 			)
@@ -12198,7 +12198,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b1fcba21-dbb4-4966-8210-b577622a9dd7")
-		(property "Reference" "#PWR016"
+		(property "Reference" "#PWR013"
 			(at 85.09 27.94 0)
 			(hide yes)
 			(show_name no)
@@ -12258,7 +12258,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR016")
+					(reference "#PWR013")
 					(unit 1)
 				)
 			)
@@ -12275,7 +12275,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "b2da9eff-44dc-43ae-9910-faa1575b8c76")
-		(property "Reference" "#PWR011"
+		(property "Reference" "#PWR07"
 			(at 59.69 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -12287,7 +12287,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 59.69 81.28 0)
+			(at 60.198 81.28 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12335,7 +12335,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR011")
+					(reference "#PWR07")
 					(unit 1)
 				)
 			)
@@ -12353,7 +12353,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b3434fe4-51ce-4829-858a-4c173c583328")
-		(property "Reference" "#PWR08"
+		(property "Reference" "#PWR06"
 			(at 45.72 81.28 0)
 			(hide yes)
 			(show_name no)
@@ -12413,7 +12413,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR08")
+					(reference "#PWR06")
 					(unit 1)
 				)
 			)
@@ -12430,7 +12430,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "b3976f78-92ce-4c3a-be9c-fdbe869f4938")
-		(property "Reference" "J14"
+		(property "Reference" "J7"
 			(at 103.632 73.406 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12441,8 +12441,8 @@
 				(justify left)
 			)
 		)
-		(property "Value" "Conn_Coaxial"
-			(at 97.028 70.866 0)
+		(property "Value" "Ebyte"
+			(at 99.314 70.866 0)
 			(show_name no)
 			(do_not_autoplace no)
 			(effects
@@ -12494,7 +12494,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J14")
+					(reference "J7")
 					(unit 1)
 				)
 			)
@@ -12512,7 +12512,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b4b319c7-3526-4d83-99a3-0d2f0410937c")
-		(property "Reference" "U6"
+		(property "Reference" "U5"
 			(at 171.45 25.4 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12769,7 +12769,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "U6")
+					(reference "U5")
 					(unit 1)
 				)
 			)
@@ -12787,7 +12787,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b68a6f0f-d8c3-4db6-b487-438eced29cfa")
-		(property "Reference" "#PWR021"
+		(property "Reference" "#PWR023"
 			(at 120.65 181.61 0)
 			(hide yes)
 			(show_name no)
@@ -12847,7 +12847,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR021")
+					(reference "#PWR023")
 					(unit 1)
 				)
 			)
@@ -12864,7 +12864,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "b7ddbf4b-aa9b-4642-ae07-dfc53bf84a55")
-		(property "Reference" "R9"
+		(property "Reference" "R7"
 			(at 108.966 42.926 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12926,7 +12926,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R9")
+					(reference "R7")
 					(unit 1)
 				)
 			)
@@ -12944,7 +12944,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "b801b249-0e08-4a8e-99b2-0947d709051d")
-		(property "Reference" "#PWR044"
+		(property "Reference" "#PWR050"
 			(at 257.81 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -13004,7 +13004,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR044")
+					(reference "#PWR050")
 					(unit 1)
 				)
 			)
@@ -13022,7 +13022,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c0edffdc-9159-4ba7-a0ab-2c43c3297686")
-		(property "Reference" "#PWR037"
+		(property "Reference" "#PWR043"
 			(at 250.19 27.94 0)
 			(hide yes)
 			(show_name no)
@@ -13082,7 +13082,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR037")
+					(reference "#PWR043")
 					(unit 1)
 				)
 			)
@@ -13100,7 +13100,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c2115b57-f4ad-492a-a5b9-135ef0918a47")
-		(property "Reference" "J13"
+		(property "Reference" "J14"
 			(at 265.43 69.8499 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13111,7 +13111,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TO_92_4_JST_PH"
+		(property "Value" "Hall_4_PH"
 			(at 265.43 72.3899 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13167,7 +13167,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J13")
+					(reference "J14")
 					(unit 1)
 				)
 			)
@@ -13185,7 +13185,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c63c172f-e01d-4076-98ea-0dd8d0b4b9e2")
-		(property "Reference" "U2"
+		(property "Reference" "U1"
 			(at 91.44 90.17 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13340,7 +13340,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "U2")
+					(reference "U1")
 					(unit 1)
 				)
 			)
@@ -13357,7 +13357,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "c8fcef63-31f3-48bc-87c6-0c27d580e1e8")
-		(property "Reference" "J2"
+		(property "Reference" "J1"
 			(at 35.56 128.2699 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13368,7 +13368,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "ESC_1_PWM_1x03"
+		(property "Value" "ESC_1_PWM"
 			(at 25.654 135.128 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13424,7 +13424,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J2")
+					(reference "J1")
 					(unit 1)
 				)
 			)
@@ -13442,7 +13442,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "c91b332d-bf5b-4a90-9b71-f0e3a55fabc4")
-		(property "Reference" "#PWR031"
+		(property "Reference" "#PWR038"
 			(at 215.9 95.25 0)
 			(hide yes)
 			(show_name no)
@@ -13502,7 +13502,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR031")
+					(reference "#PWR038")
 					(unit 1)
 				)
 			)
@@ -13520,7 +13520,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "cafcb16f-142c-40ab-8e74-3f641698f2e3")
-		(property "Reference" "#PWR023"
+		(property "Reference" "#PWR025"
 			(at 123.19 161.29 0)
 			(hide yes)
 			(show_name no)
@@ -13580,7 +13580,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR023")
+					(reference "#PWR025")
 					(unit 1)
 				)
 			)
@@ -13598,7 +13598,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "cf5b42bc-b07d-49bf-9d0f-ac1631fabf64")
-		(property "Reference" "#PWR014"
+		(property "Reference" "#PWR010"
 			(at 77.47 153.67 0)
 			(hide yes)
 			(show_name no)
@@ -13658,7 +13658,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR014")
+					(reference "#PWR010")
 					(unit 1)
 				)
 			)
@@ -13676,7 +13676,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "d10a0bb6-b1a7-4e74-bd89-0ffe3517cd2c")
-		(property "Reference" "#PWR018"
+		(property "Reference" "#PWR019"
 			(at 104.14 135.89 0)
 			(hide yes)
 			(show_name no)
@@ -13736,7 +13736,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR018")
+					(reference "#PWR019")
 					(unit 1)
 				)
 			)
@@ -13754,7 +13754,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "d56f0606-16cf-44f8-8348-b4b6648c935b")
-		(property "Reference" "#PWR055"
+		(property "Reference" "#PWR018"
 			(at 101.6 85.09 0)
 			(hide yes)
 			(show_name no)
@@ -13814,7 +13814,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR055")
+					(reference "#PWR018")
 					(unit 1)
 				)
 			)
@@ -13831,7 +13831,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "d6561611-9205-4e9d-8020-59ff89153925")
-		(property "Reference" "#PWR056"
+		(property "Reference" "#PWR016"
 			(at 92.71 88.9 0)
 			(hide yes)
 			(show_name no)
@@ -13891,7 +13891,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR056")
+					(reference "#PWR016")
 					(unit 1)
 				)
 			)
@@ -13909,7 +13909,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "db6a2aca-baad-4279-ac39-5906e07bbf92")
-		(property "Reference" "#PWR02"
+		(property "Reference" "#PWR01"
 			(at 24.13 138.43 0)
 			(hide yes)
 			(show_name no)
@@ -13969,7 +13969,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR02")
+					(reference "#PWR01")
 					(unit 1)
 				)
 			)
@@ -13987,7 +13987,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "dc40f5d5-eb44-401e-adfb-16bae799a8e2")
-		(property "Reference" "#PWR045"
+		(property "Reference" "#PWR09"
 			(at 67.31 160.02 0)
 			(hide yes)
 			(show_name no)
@@ -14047,7 +14047,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR045")
+					(reference "#PWR09")
 					(unit 1)
 				)
 			)
@@ -14065,7 +14065,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "e37423b8-40cd-4f44-b612-b74713502a17")
-		(property "Reference" "#PWR046"
+		(property "Reference" "#PWR028"
 			(at 135.89 41.91 0)
 			(hide yes)
 			(show_name no)
@@ -14125,7 +14125,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR046")
+					(reference "#PWR028")
 					(unit 1)
 				)
 			)
@@ -14143,7 +14143,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "e5558d80-b40b-4240-a46b-e9dd1c834f90")
-		(property "Reference" "J10"
+		(property "Reference" "J11"
 			(at 265.43 20.3199 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14154,7 +14154,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "TO_92_1_JST_PH"
+		(property "Value" "Hall_1_PH"
 			(at 265.43 22.8599 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14210,7 +14210,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "J10")
+					(reference "J11")
 					(unit 1)
 				)
 			)
@@ -14227,7 +14227,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "e9940159-a4b7-4857-862c-5066a069db44")
-		(property "Reference" "C7"
+		(property "Reference" "C9"
 			(at 130.556 92.964 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14289,7 +14289,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "C7")
+					(reference "C9")
 					(unit 1)
 				)
 			)
@@ -14398,7 +14398,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "7V4_In_XT30M"
+		(property "Value" "7V4_In"
 			(at 81.28 20.574 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14468,7 +14468,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "ecc6e96c-1884-4a79-80c7-73b4465268c6")
-		(property "Reference" "#PWR012"
+		(property "Reference" "#PWR08"
 			(at 59.69 104.14 0)
 			(hide yes)
 			(show_name no)
@@ -14528,7 +14528,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR012")
+					(reference "#PWR08")
 					(unit 1)
 				)
 			)
@@ -14545,7 +14545,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "f06b6c03-8f38-4be6-a710-8e2d609a1be1")
-		(property "Reference" "C9"
+		(property "Reference" "C6"
 			(at 96.52 76.1999 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14609,7 +14609,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "C9")
+					(reference "C6")
 					(unit 1)
 				)
 			)
@@ -14626,7 +14626,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "f4cc6af9-085a-49a4-b26c-87227c01d8ba")
-		(property "Reference" "#PWR05"
+		(property "Reference" "#PWR02"
 			(at 38.1 119.38 0)
 			(hide yes)
 			(show_name no)
@@ -14686,7 +14686,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR05")
+					(reference "#PWR02")
 					(unit 1)
 				)
 			)
@@ -14703,7 +14703,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "f55cbb99-fa57-447a-ac1b-470c45569c04")
-		(property "Reference" "R6"
+		(property "Reference" "R12"
 			(at 205.994 74.676 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14765,7 +14765,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R6")
+					(reference "R12")
 					(unit 1)
 				)
 			)
@@ -14782,7 +14782,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "f58db7a7-c02f-4112-a080-f285a96e7b04")
-		(property "Reference" "R5"
+		(property "Reference" "R13"
 			(at 223.266 59.944 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14844,7 +14844,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R5")
+					(reference "R13")
 					(unit 1)
 				)
 			)
@@ -14862,7 +14862,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "f677dd4e-8af3-435c-accb-133fa88dabd8")
-		(property "Reference" "#PWR048"
+		(property "Reference" "#PWR020"
 			(at 111.76 41.91 0)
 			(hide yes)
 			(show_name no)
@@ -14922,7 +14922,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR048")
+					(reference "#PWR020")
 					(unit 1)
 				)
 			)
@@ -14939,7 +14939,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "f9437526-899d-4fca-81b6-78872c07bfdd")
-		(property "Reference" "R4"
+		(property "Reference" "R8"
 			(at 115.316 122.936 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15001,7 +15001,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "R4")
+					(reference "R8")
 					(unit 1)
 				)
 			)
@@ -15018,7 +15018,7 @@
 		(in_pos_files yes)
 		(dnp no)
 		(uuid "fb0403e2-36f6-4d2d-b264-e5b52aa3507d")
-		(property "Reference" "#PWR036"
+		(property "Reference" "#PWR031"
 			(at 146.05 21.59 0)
 			(hide yes)
 			(show_name no)
@@ -15078,7 +15078,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR036")
+					(reference "#PWR031")
 					(unit 1)
 				)
 			)
@@ -15096,7 +15096,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "fd73097d-a968-4518-8871-978d30d14d22")
-		(property "Reference" "#PWR052"
+		(property "Reference" "#PWR026"
 			(at 124.46 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -15156,7 +15156,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR052")
+					(reference "#PWR026")
 					(unit 1)
 				)
 			)
@@ -15174,7 +15174,7 @@
 		(dnp no)
 		(fields_autoplaced yes)
 		(uuid "fdf17a67-ae15-4d2a-9eac-06876ddf50e9")
-		(property "Reference" "#PWR027"
+		(property "Reference" "#PWR033"
 			(at 168.91 177.8 0)
 			(hide yes)
 			(show_name no)
@@ -15234,7 +15234,7 @@
 		(instances
 			(project "teensyGNC"
 				(path "/274b7eeb-67be-465e-a7f2-8856e2872d5f"
-					(reference "#PWR027")
+					(reference "#PWR033")
 					(unit 1)
 				)
 			)

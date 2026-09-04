@@ -76,7 +76,16 @@
           "width": 0.0
         }
       ],
-      "drc_exclusions": [],
+      "drc_exclusions": [
+        [
+          "lib_footprint_mismatch|110750000|90615000|3eef98ec-de19-4ef4-b318-aaea2e6450d4|00000000-0000-0000-0000-000000000000",
+          "Removed pads in the middle for routing"
+        ],
+        [
+          "lib_footprint_mismatch|84750000|71200000|4ca7a587-948c-4b8d-b061-9d68a81fe884|00000000-0000-0000-0000-000000000000",
+          "Added traces exclusion zone"
+        ]
+      ],
       "meta": {
         "version": 2
       },
@@ -213,12 +222,12 @@
         0.0,
         0.2032,
         0.254,
+        0.381,
         0.508,
         0.762,
         1.016,
         1.27,
         1.524,
-        1.778,
         2.03
       ],
       "tuning_pattern_settings": {
@@ -556,7 +565,7 @@
       "netlist": "",
       "plot": "",
       "specctra_dsn": "",
-      "step": "../../../Downloads/teensyGNC_30_8.step",
+      "step": "../../../Downloads/teensyGNC_4_9.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
@@ -691,7 +700,7 @@
         "uuid": "274b7eeb-67be-465e-a7f2-8856e2872d5f"
       }
     ],
-    "used_designators": "U1-6,D1-2,#PWR1-57,R1-13,J1-14,C1-10,NT1",
+    "used_designators": "U1-6,D1-2,#PWR1-57,R1-13,J1-14,Ebyte1,C1-10,NT1",
     "variants": []
   },
   "sheets": [
