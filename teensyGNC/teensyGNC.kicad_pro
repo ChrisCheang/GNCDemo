@@ -80,10 +80,6 @@
         [
           "lib_footprint_mismatch|110750000|90615000|3eef98ec-de19-4ef4-b318-aaea2e6450d4|00000000-0000-0000-0000-000000000000",
           "Removed pads in the middle for routing"
-        ],
-        [
-          "lib_footprint_mismatch|84750000|71200000|4ca7a587-948c-4b8d-b061-9d68a81fe884|00000000-0000-0000-0000-000000000000",
-          "Added traces exclusion zone"
         ]
       ],
       "meta": {
