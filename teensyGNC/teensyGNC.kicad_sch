@@ -5430,6 +5430,16 @@
 	)
 	(wire
 		(pts
+			(xy 209.55 59.69) (xy 199.39 59.69)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "116923f1-2068-4003-b472-bbda2dbaea7e")
+	)
+	(wire
+		(pts
 			(xy 121.92 35.56) (xy 125.73 35.56)
 		)
 		(stroke
@@ -5570,16 +5580,6 @@
 	)
 	(wire
 		(pts
-			(xy 209.55 62.23) (xy 199.39 62.23)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2b46cca1-291b-4885-bbc8-76f622375a69")
-	)
-	(wire
-		(pts
 			(xy 143.51 92.71) (xy 135.89 92.71)
 		)
 		(stroke
@@ -5617,16 +5617,6 @@
 			(type default)
 		)
 		(uuid "31a629e3-f49a-442b-834b-4c8939ee086a")
-	)
-	(wire
-		(pts
-			(xy 226.06 96.52) (xy 210.82 96.52)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "32a3f887-41cd-4f18-bbd1-b780b7bb0c32")
 	)
 	(wire
 		(pts
@@ -5950,6 +5940,16 @@
 	)
 	(wire
 		(pts
+			(xy 209.55 93.98) (xy 226.06 93.98)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5d2dfee9-be1b-4d93-888b-416b9fe85f12")
+	)
+	(wire
+		(pts
 			(xy 78.74 113.03) (xy 78.74 115.57)
 		)
 		(stroke
@@ -6250,6 +6250,16 @@
 	)
 	(wire
 		(pts
+			(xy 203.2 62.23) (xy 203.2 96.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7ff27adb-768a-459b-8069-45718354bf06")
+	)
+	(wire
+		(pts
 			(xy 43.18 121.92) (xy 43.18 118.11)
 		)
 		(stroke
@@ -6407,16 +6417,6 @@
 			(type default)
 		)
 		(uuid "8f5bb7d2-c30a-46de-a6dd-d926c039e5a1")
-	)
-	(wire
-		(pts
-			(xy 226.06 93.98) (xy 209.55 93.98)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "903a4686-85d9-4f5b-9b8e-34640c0bd068")
 	)
 	(wire
 		(pts
@@ -6670,16 +6670,6 @@
 	)
 	(wire
 		(pts
-			(xy 210.82 59.69) (xy 199.39 59.69)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b15198cf-fb35-43f7-9a06-3a8ec9b934a3")
-	)
-	(wire
-		(pts
 			(xy 68.58 46.99) (xy 121.92 46.99)
 		)
 		(stroke
@@ -6830,7 +6820,7 @@
 	)
 	(wire
 		(pts
-			(xy 209.55 62.23) (xy 209.55 93.98)
+			(xy 209.55 59.69) (xy 209.55 93.98)
 		)
 		(stroke
 			(width 0)
@@ -6960,6 +6950,16 @@
 	)
 	(wire
 		(pts
+			(xy 199.39 62.23) (xy 203.2 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dc7e8061-77bc-464e-9829-cc2c038053a2")
+	)
+	(wire
+		(pts
 			(xy 78.74 110.49) (xy 78.74 113.03)
 		)
 		(stroke
@@ -7080,16 +7080,6 @@
 	)
 	(wire
 		(pts
-			(xy 210.82 96.52) (xy 210.82 59.69)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "e756a72b-86d9-484a-96b4-c74feda6de54")
-	)
-	(wire
-		(pts
 			(xy 80.01 102.87) (xy 80.01 87.63)
 		)
 		(stroke
@@ -7157,6 +7147,16 @@
 			(type default)
 		)
 		(uuid "f3d298be-86a7-4655-8812-b3e8c6deca4b")
+	)
+	(wire
+		(pts
+			(xy 203.2 96.52) (xy 226.06 96.52)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "f3d5328b-4753-4c98-8e07-ad73cf69c880")
 	)
 	(wire
 		(pts
@@ -7742,6 +7742,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C17168"
+			(at 86.36 73.66 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "4b511a26-e374-43f9-be18-4eda7beb57be")
 		)
@@ -7917,6 +7928,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C7234"
+			(at 31.75 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "902f522d-a173-4229-a8e5-a0bc8dd787dc")
 		)
@@ -8065,6 +8087,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 97.79 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C5362358"
+			(at 97.79 39.37 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -8310,6 +8343,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C135018"
+			(at 55.88 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "01d3c335-99da-4c17-b82e-324a41e47480")
 		)
@@ -8382,6 +8426,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 262.89 38.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C131339"
 			(at 262.89 38.1 0)
 			(hide yes)
 			(show_name no)
@@ -8710,6 +8765,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C51118"
+			(at 123.19 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "5"
 			(uuid "701df300-8b2f-421f-8112-67f522990e45")
 		)
@@ -8798,6 +8864,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C109457"
+			(at 128.27 87.63 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "0d042026-b955-4a93-b468-d5f6d42968fa")
 		)
@@ -8868,6 +8945,17 @@
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
 			(at 115.57 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C559769"
+			(at 115.57 93.98 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -9036,6 +9124,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C160390"
+			(at 231.14 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "3"
 			(uuid "7a307be8-519d-479d-9502-3d6d72e1efd9")
 		)
@@ -9190,6 +9289,17 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 38.1 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C14663"
 			(at 38.1 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -9755,6 +9865,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C7234"
+			(at 52.07 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "478b64a1-00d6-478a-8cb5-c6a4319bd6b3")
 		)
@@ -9982,6 +10103,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x04, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 224.79 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C161692"
 			(at 224.79 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -10227,6 +10359,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 121.92 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C5362358"
+			(at 121.92 39.37 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -10558,6 +10701,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C122970"
+			(at 60.96 87.63 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "ad734537-e208-4a2f-8d86-b5970bb722f8")
 		)
@@ -10630,6 +10784,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 46.99 27.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C158012"
 			(at 46.99 27.94 0)
 			(hide yes)
 			(show_name no)
@@ -11242,7 +11407,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(in_pos_files yes)
+		(in_pos_files no)
 		(dnp no)
 		(uuid "9337cf8e-468f-4ac7-abde-f8e1d9a9eaff")
 		(property "Reference" "R5"
@@ -11289,6 +11454,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 88.9 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C5362358"
+			(at 88.9 39.37 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -11370,6 +11546,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 262.89 53.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C131339"
 			(at 262.89 53.34 0)
 			(hide yes)
 			(show_name no)
@@ -11686,6 +11873,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 132.08 39.37 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C5362358"
+			(at 132.08 39.37 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12014,6 +12212,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C5362358"
+			(at 124.46 119.38 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "369f45cc-3ee2-4c4d-93d0-d6ef0502b265")
 		)
@@ -12162,6 +12371,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 59.69 102.87 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C122970"
+			(at 59.69 102.87 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12475,6 +12695,17 @@
 			)
 		)
 		(property "Description" "coaxial connector (BNC, SMA, SMB, SMC, Cinch/RCA, LEMO, ...)"
+			(at 101.6 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C6962402"
 			(at 101.6 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -12917,6 +13148,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C5362358"
+			(at 107.95 39.37 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "4101457b-8c26-47e9-9093-9ced529563d4")
 		)
@@ -13145,6 +13387,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 262.89 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C131339"
 			(at 262.89 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -14198,6 +14451,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C131339"
+			(at 262.89 21.59 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "1"
 			(uuid "165c09f5-f938-41d3-b2fe-1a24e61ffd8f")
 		)
@@ -14271,6 +14535,17 @@
 		)
 		(property "Description" "Unpolarized capacitor, small symbol"
 			(at 128.27 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C14663"
+			(at 128.27 93.98 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14361,6 +14636,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C14663"
+			(at 58.42 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "ad49ab09-4f11-4d3e-981c-d24dbfbe565f")
 		)
@@ -14432,6 +14718,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x02, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 80.01 26.67 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C428721"
 			(at 80.01 26.67 0)
 			(hide yes)
 			(show_name no)
@@ -14756,6 +15053,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" "C4190"
+			(at 209.55 73.66 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "3982c304-d77c-442c-8914-54ba8d127e5c")
 		)
@@ -14826,6 +15134,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 219.71 60.96 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C4190"
+			(at 219.71 60.96 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14983,6 +15302,17 @@
 		)
 		(property "Description" "Resistor"
 			(at 114.3 119.38 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" "C5362358"
+			(at 114.3 119.38 90)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
