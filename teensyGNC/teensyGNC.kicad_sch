@@ -7660,6 +7660,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" ""
+			(at 69.85 90.17 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "3"
 			(uuid "bea5afa3-ad85-4df6-8279-b04d9d48d94b")
 		)
@@ -7709,7 +7720,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Resistor_SMD:R_0402_1005Metric"
+		(property "Footprint" "Resistor_SMD:R_0603_1608Metric"
 			(at 86.36 75.438 90)
 			(hide yes)
 			(show_name no)
@@ -7742,7 +7753,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C17168"
+		(property "LCSC Part #" "C17168"
+			(at 86.36 73.66 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 86.36 73.66 90)
 			(hide yes)
 			(show_name no)
@@ -7822,6 +7844,17 @@
 			)
 		)
 		(property "Description" ""
+			(at 157.48 172.72 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 157.48 172.72 0)
 			(hide yes)
 			(show_name no)
@@ -7928,7 +7961,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C7234"
+		(property "LCSC Part #" "C7234"
+			(at 31.75 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 31.75 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -8096,7 +8140,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 97.79 39.37 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 97.79 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -8343,7 +8398,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C135018"
+		(property "LCSC Part #" "C135018"
+			(at 55.88 77.47 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 55.88 77.47 0)
 			(hide yes)
 			(show_name no)
@@ -8436,7 +8502,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C131339"
+		(property "LCSC Part #" "C131339"
+			(at 262.89 38.1 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 262.89 38.1 0)
 			(hide yes)
 			(show_name no)
@@ -8607,6 +8684,28 @@
 				)
 			)
 		)
+		(property "LCSC Part #" "C5362358"
+			(at 71.12 156.21 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
+			(at 71.12 156.21 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "2"
 			(uuid "a9790e66-e7ae-4337-bc96-cdf5a0867ea6")
 		)
@@ -8765,7 +8864,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C51118"
+		(property "LCSC Part #" "C51118"
+			(at 123.19 80.01 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 123.19 80.01 0)
 			(hide yes)
 			(show_name no)
@@ -8864,7 +8974,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C109457"
+		(property "LCSC Part #" "C109457"
+			(at 128.27 87.63 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 128.27 87.63 90)
 			(hide yes)
 			(show_name no)
@@ -8954,7 +9075,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C559769"
+		(property "LCSC Part #" "C559769"
+			(at 115.57 93.98 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 115.57 93.98 90)
 			(hide yes)
 			(show_name no)
@@ -9124,7 +9256,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C160390"
+		(property "LCSC Part #" "C160390"
+			(at 231.14 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 231.14 91.44 0)
 			(hide yes)
 			(show_name no)
@@ -9299,7 +9442,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C14663"
+		(property "LCSC Part #" "C14663"
+			(at 38.1 109.22 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 38.1 109.22 0)
 			(hide yes)
 			(show_name no)
@@ -9537,6 +9691,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 68.58 105.41 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 68.58 105.41 0)
 			(hide yes)
 			(show_name no)
@@ -9865,7 +10030,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C7234"
+		(property "LCSC Part #" "C7234"
+			(at 52.07 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 52.07 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -10113,7 +10289,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C161692"
+		(property "LCSC Part #" "C161692"
+			(at 224.79 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 224.79 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -10178,7 +10365,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 80.9752 82.55 0)
 			(hide yes)
 			(show_name no)
@@ -10201,6 +10388,17 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 80.01 78.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 80.01 78.74 0)
 			(hide yes)
 			(show_name no)
@@ -10368,7 +10566,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 121.92 39.37 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 121.92 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -10616,6 +10825,17 @@
 				)
 			)
 		)
+		(property "LCSC Part" ""
+			(at 151.13 20.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
 		(pin "3"
 			(uuid "f21282e4-fcdb-4b54-acc7-f33c626356f7")
 		)
@@ -10701,7 +10921,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C122970"
+		(property "LCSC Part #" "C122970"
+			(at 60.96 87.63 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 60.96 87.63 90)
 			(hide yes)
 			(show_name no)
@@ -10794,7 +11025,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C158012"
+		(property "LCSC Part #" "C158012"
+			(at 46.99 27.94 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 46.99 27.94 0)
 			(hide yes)
 			(show_name no)
@@ -11041,6 +11283,17 @@
 					(size 1.27 1.27)
 				)
 				(justify bottom)
+			)
+		)
+		(property "LCSC Part" ""
+			(at 97.79 162.56 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
 			)
 		)
 		(pin "JP1_6"
@@ -11407,7 +11660,7 @@
 		(exclude_from_sim no)
 		(in_bom yes)
 		(on_board yes)
-		(in_pos_files no)
+		(in_pos_files yes)
 		(dnp no)
 		(uuid "9337cf8e-468f-4ac7-abde-f8e1d9a9eaff")
 		(property "Reference" "R5"
@@ -11463,7 +11716,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 88.9 39.37 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 88.9 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -11556,7 +11820,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C131339"
+		(property "LCSC Part #" "C131339"
+			(at 262.89 53.34 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 262.89 53.34 0)
 			(hide yes)
 			(show_name no)
@@ -11882,7 +12157,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 132.08 39.37 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 132.08 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -12042,6 +12328,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 49.53 124.46 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 49.53 124.46 0)
 			(hide yes)
 			(show_name no)
@@ -12212,7 +12509,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 124.46 119.38 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 124.46 119.38 90)
 			(hide yes)
 			(show_name no)
@@ -12380,7 +12688,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C122970"
+		(property "LCSC Part #" "C122970"
+			(at 59.69 102.87 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 59.69 102.87 90)
 			(hide yes)
 			(show_name no)
@@ -12705,7 +13024,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C6962402"
+		(property "LCSC Part #" "C6962402"
+			(at 101.6 73.66 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 101.6 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -12786,6 +13116,17 @@
 			)
 		)
 		(property "Description" ""
+			(at 171.45 91.44 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 171.45 91.44 0)
 			(hide yes)
 			(show_name no)
@@ -13148,7 +13489,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 107.95 39.37 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 107.95 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -13397,7 +13749,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C131339"
+		(property "LCSC Part #" "C131339"
+			(at 262.89 71.12 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 262.89 71.12 0)
 			(hide yes)
 			(show_name no)
@@ -13513,8 +13876,19 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C42464206"
+		(property "LCSC Part #" "C42464206"
 			(at 91.44 147.32 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
+			(at 91.44 113.03 0)
 			(hide yes)
 			(show_name no)
 			(do_not_autoplace no)
@@ -13655,6 +14029,17 @@
 			)
 		)
 		(property "Description" "Generic connector, single row, 01x03, script generated (kicad-library-utils/schlib/autogen/connector/)"
+			(at 33.02 129.54 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 33.02 129.54 0)
 			(hide yes)
 			(show_name no)
@@ -14451,7 +14836,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C131339"
+		(property "LCSC Part #" "C131339"
+			(at 262.89 21.59 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 262.89 21.59 0)
 			(hide yes)
 			(show_name no)
@@ -14544,7 +14940,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C14663"
+		(property "LCSC Part #" "C14663"
+			(at 128.27 93.98 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 128.27 93.98 90)
 			(hide yes)
 			(show_name no)
@@ -14636,7 +15043,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C14663"
+		(property "LCSC Part #" "C14663"
+			(at 58.42 93.98 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 58.42 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -14728,7 +15146,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C428721"
+		(property "LCSC Part #" "C428721"
+			(at 80.01 26.67 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 80.01 26.67 0)
 			(hide yes)
 			(show_name no)
@@ -14864,7 +15293,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Capacitor_SMD:C_0402_1005Metric"
+		(property "Footprint" "Capacitor_SMD:C_0603_1608Metric"
 			(at 93.6752 82.55 0)
 			(hide yes)
 			(show_name no)
@@ -14887,6 +15316,17 @@
 			)
 		)
 		(property "Description" "Unpolarized capacitor"
+			(at 92.71 78.74 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 92.71 78.74 0)
 			(hide yes)
 			(show_name no)
@@ -15053,7 +15493,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C4190"
+		(property "LCSC Part #" "C4190"
+			(at 209.55 73.66 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 209.55 73.66 90)
 			(hide yes)
 			(show_name no)
@@ -15143,7 +15594,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C4190"
+		(property "LCSC Part #" "C4190"
+			(at 219.71 60.96 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 219.71 60.96 90)
 			(hide yes)
 			(show_name no)
@@ -15311,7 +15773,18 @@
 				)
 			)
 		)
-		(property "LCSC Part" "C5362358"
+		(property "LCSC Part #" "C5362358"
+			(at 114.3 119.38 90)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC Part" ""
 			(at 114.3 119.38 90)
 			(hide yes)
 			(show_name no)
