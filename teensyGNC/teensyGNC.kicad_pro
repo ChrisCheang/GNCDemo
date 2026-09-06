@@ -561,7 +561,7 @@
       "netlist": "",
       "plot": "gerbers/",
       "specctra_dsn": "",
-      "step": "../../../Downloads/teensyGNC_5_9.step",
+      "step": "../../../Downloads/teensyGNC_6_9.step",
       "vrml": ""
     },
     "page_layout_descr_file": ""
