@@ -7753,7 +7753,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C17168"
+		(property "LCSC Part #" "C95177"
 			(at 86.36 73.66 90)
 			(hide yes)
 			(show_name no)
@@ -8140,7 +8140,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 97.79 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -8684,7 +8684,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 71.12 156.21 90)
 			(hide yes)
 			(show_name no)
@@ -9075,7 +9075,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C559769"
+		(property "LCSC Part #" "C29936"
 			(at 115.57 93.98 90)
 			(hide yes)
 			(show_name no)
@@ -10566,7 +10566,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 121.92 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -11716,7 +11716,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 88.9 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -12157,7 +12157,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 132.08 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -12509,7 +12509,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 124.46 119.38 90)
 			(hide yes)
 			(show_name no)
@@ -12991,7 +12991,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Connector_Coaxial:SMA_Amphenol_132203-12_Horizontal"
+		(property "Footprint" "Connector_Coaxial:SMA_BAT_Wireless_BWSMA-KWE-Z001"
 			(at 101.6 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -13024,7 +13024,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C6962402"
+		(property "LCSC Part #" "C496551"
 			(at 101.6 73.66 0)
 			(hide yes)
 			(show_name no)
@@ -13489,7 +13489,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 107.95 39.37 90)
 			(hide yes)
 			(show_name no)
@@ -15773,7 +15773,7 @@
 				)
 			)
 		)
-		(property "LCSC Part #" "C5362358"
+		(property "LCSC Part #" "C25804"
 			(at 114.3 119.38 90)
 			(hide yes)
 			(show_name no)
