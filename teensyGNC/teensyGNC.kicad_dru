@@ -1,0 +1,4 @@
+(version 1)
+
+(rule "Disallow Blind and Buried Vias"
+  (constraint disallow blind_via buried_via micro_via))
