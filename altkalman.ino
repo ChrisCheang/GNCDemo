@@ -169,7 +169,7 @@ void loop() {
     myIMU.enableLinearAccelerometer(2.5);
   }
 
-  // 1. Read BNO085 IMU Z+ Acceleration & Double Integrate
+  // 1. Read BNO085 IMU X+ Acceleration & Double Integrate
   if (myIMU.dataAvailable() == true) {
     unsigned long now_micros = micros();
     
@@ -178,13 +178,13 @@ void loop() {
     float dt = (now_micros - prev_imu_time) * 1e-6f;
     prev_imu_time = now_micros;
 
-    float accel_z = myIMU.getLinAccelZ(); 
+    float accel_x = myIMU.getLinAccelX(); 
 
-    imu_vel += accel_z * dt;
-    imu_alt += imu_vel * dt + 0.5f * accel_z * dt * dt;
+    imu_vel += accel_x * dt;
+    imu_alt += imu_vel * dt + 0.5f * accel_x * dt * dt;
     
     // Kalman Prediction (High Frequency)
-    kalman.predict(accel_z, dt);
+    kalman.predict(accel_x, dt);
 
     // 2. Read DPS310 Barometer
     sensors_event_t temp_event, pressure_event;
