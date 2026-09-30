@@ -35,10 +35,10 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- TVC PID TUNING & LIMITS ---
-float tvc_kp = 2.0f;       // Proportional gain
+float tvc_kp = 1.5f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.1f;      // Derivative gain
-float d_lpf_alpha = 0.1f;  // Low pass filter factor for derivative (0.0 to 1.0)
+float tvc_kd = 0.2f;      // Derivative gain
+float d_lpf_alpha = 0.03f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
 int servo_limit_us = 333;   // Max deflection from center (~30 deg = 333us)
@@ -84,8 +84,11 @@ float prev_alt_error = 0.0f;
 float alt_d_filtered = 0.0f;
 
 float target_altitude = 0.5f; // Target altitude in meters
-int hover_throttle_us = 1800; // Base throttle needed to maintain hover
-int max_throttle_us = 2000;   // Maximum throttle limit for safety during testing
+int hover_throttle_us = 1200; // Base throttle needed to maintain hover
+int max_throttle_us = 1500;   // Maximum throttle limit for safety during testing
+
+unsigned long last_telemetry_time = 0;
+const unsigned long TELEMETRY_INTERVAL_US = 20000; // 50 Hz (20 ms)
 
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
@@ -516,8 +519,8 @@ void loop() {
       }
 
       if (altitude_locked) {
-        escTop_us = 1700;
-        escBot_us = 1700;
+        escTop_us = 1200;
+        escBot_us = 1200;
       }
 
       escTop.writeMicroseconds(escTop_us);
@@ -536,29 +539,42 @@ void loop() {
       kalman.update(baro_alt);
     }
 
-    // 3. Print Data to Serial Plotter
-    Serial.print(0);
-    Serial.print(",");
-    Serial.print(0.5);
-    Serial.print(",");
-    // Serial.print(imu_alt, 4);
-    // Serial.print(",");
-    // Serial.print(baro_alt, 4);
-    // Serial.print(",");
-    Serial.print(kalman.x[0], 4);
-    Serial.print(",");
-    Serial.print(escTop_us);
-    Serial.print(",");
-    Serial.print(escBot_us);
-    Serial.print(",");
-    Serial.print(pitchServo.readMicroseconds());
-    Serial.print(",");
-    Serial.println(yawServo.readMicroseconds());
-    //Serial.print(",");
-    //Serial.print(servo_phi_deg);
-    //Serial.print(",");
-    //Serial.println(servo_yaw_deg);
+    // 2. Gate telemetry output to 50 Hz non-blocking
+    unsigned long current_micros = micros();
+    if (current_micros - last_telemetry_time >= TELEMETRY_INTERVAL_US) {
+        last_telemetry_time = current_micros;
+        
+        // Only attempt to transmit if buffer is clear
+        if (Serial && Serial.availableForWrite() >= 128) {
+          // --- TELEMETRY SERIAL PRINT (CSV FORMAT) ---
+          // Quaternions (w, x, y, z)
+          Serial.print(qw);                Serial.print(",");
+          Serial.print(qx);                Serial.print(",");
+          Serial.print(qy);                Serial.print(",");
+          Serial.print(qz);                Serial.print(",");
 
+          // Orientation Angles (Pitch, Yaw, Roll in deg)
+          Serial.print(pitch_deg);         Serial.print(",");
+          Serial.print(yaw_deg);           Serial.print(",");
+          Serial.print(roll_deg);          Serial.print(",");
+
+          // Angular Rates (Pitch, Yaw, Roll rates in deg/s)
+          Serial.print(pitch_d_filtered);  Serial.print(",");
+          Serial.print(yaw_d_filtered);    Serial.print(",");
+          Serial.print(roll_d_filtered);   Serial.print(",");
+
+          // Kalman Filtered 1D Altitude (meters)
+          Serial.print(kalman.x[0], 4);       Serial.print(",");
+
+          // Top & Bottom Motor Pulse Widths (microseconds)
+          Serial.print(escTop_us);            Serial.print(",");
+          Serial.print(escBot_us);            Serial.print(",");
+
+          // Servo Command Angles (deg)
+          Serial.print(pitchServo.readMicroseconds());     Serial.print(",");
+          Serial.println(yawServo.readMicroseconds());
+        }
+    }
 
   }
 }
