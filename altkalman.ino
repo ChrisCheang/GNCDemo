@@ -35,9 +35,9 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- TVC PID TUNING & LIMITS ---
-float tvc_kp = 1.5f;       // Proportional gain
+float tvc_kp = 0.8f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.2f;      // Derivative gain
+float tvc_kd = 0.3f;      // Derivative gain
 float d_lpf_alpha = 0.03f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
@@ -56,9 +56,9 @@ float yaw_d_filtered = 0.0f;
 bool pid_first_run = true;
 
 // --- ROLL PID TUNING & LIMITS ---
-float roll_kp = 0.0f;
+float roll_kp = 2.0f;
 float roll_ki = 0.0f;
-float roll_kd = 0.00f;
+float roll_kd = 0.2f;
 
 float roll_integral = 0.0f;
 float prev_roll_deg = 0.0f;
@@ -78,14 +78,16 @@ float alt_kd = 250.0f;
 bool calibrate_esc = false; // Set to true before uploading if you need to recalibrate the ESCs
 bool altitude_lock = false; // forces landing when altitude exceeds a threshold for initial testing
 bool altitude_locked = false;
+unsigned long lock_start_ms = 0;
+
 
 float alt_integral = 0.0f;
 float prev_alt_error = 0.0f;
 float alt_d_filtered = 0.0f;
 
-float target_altitude = 0.5f; // Target altitude in meters
-int hover_throttle_us = 1200; // Base throttle needed to maintain hover
-int max_throttle_us = 1500;   // Maximum throttle limit for safety during testing
+float target_altitude = 0.4f; // Target altitude in meters
+int hover_throttle_us = 1800; // Base throttle needed to maintain hover
+int max_throttle_us = 1950;   // Maximum throttle limit for safety during testing
 
 unsigned long last_telemetry_time = 0;
 const unsigned long TELEMETRY_INTERVAL_US = 20000; // 50 Hz (20 ms)
@@ -267,7 +269,7 @@ void setup() {
 
     Serial.println("Step 2: CONNECT BATTERY NOW! Waiting for max throttle beep...");
     // 20-second countdown loop to connect XT60/battery and wait for acceptance beeps[cite: 1]
-    for (int i = 20; i > 0; i--) {
+    for (int i = 10; i > 0; i--) {
       Serial.print("  Throttle MAX - Time remaining: ");
       Serial.print(i);
       Serial.println(" s");
@@ -375,6 +377,10 @@ void setup() {
   }
   baselinePressure = pressure_event.pressure;
   baselineTemp = temp_event.temperature;
+
+  delay(2000);
+  Serial.print("setup complete");
+  delay(2000);
 }
 
 void loop() {
@@ -418,14 +424,14 @@ void loop() {
     float pitch_deg = pitch_rad * (180.0f / PI);
     float yaw_deg   = yaw_rad * (180.0f / PI);
 
-    // Calculate pure Roll around X+ axis relative to startup orientation (prevents gimbal lock)
-    // q_diff = q_init^-1 * q_curr
-    float diff_w = qw_init * qw + qx_init * qx + qy_init * qy + qz_init * qz;
-    float diff_x = qw_init * qx - qx_init * qw - qy_init * qz + qz_init * qy;
-    // Extract rotation specifically around the X axis from the relative quaternion
-    float raw_roll_rad = 2.0f * atan2(diff_x, diff_w);
+    // Calculate Roll as the angle between the Earth-fixed XZ plane and the body Y-axis
+    // (Normal to Earth XZ plane is Earth Y-axis; dot product with Body Y-axis gives sin(angle))
+    float body_y_earth_y = qw * qw - qx * qx + qy * qy - qz * qz;
+    if (body_y_earth_y > 1.0f) body_y_earth_y = 1.0f;
+    if (body_y_earth_y < -1.0f) body_y_earth_y = -1.0f;
+    float raw_roll_rad = asin(body_y_earth_y)- 0*PI/2;
     float roll_deg = raw_roll_rad * (180.0f / PI);
-    
+
     int escTop_us = 1000;
     int escBot_us = 1000;
 
@@ -514,13 +520,20 @@ void loop() {
       escBot_us = constrain(escBot_us, 1000, max_throttle_us);
 
       // Altitude locking for initial testing
-      if (kalman.x[0] > target_altitude ) {
+      if (kalman.x[0] > target_altitude && !altitude_locked) {
         altitude_locked = true;
+        lock_start_ms = millis(); // Record timestamp when lock triggers
       }
 
       if (altitude_locked) {
-        escTop_us = 1200;
-        escBot_us = 1200;
+        // Run ESCs at hover/descent throttle for 2 seconds (2000 ms), then shut off to 1000 us
+        if (millis() - lock_start_ms >= 500) {
+          escTop_us = 1000;
+          escBot_us = 1000;
+        } else {
+          escTop_us = 1600;
+          escBot_us = 1600;
+        }
       }
 
       escTop.writeMicroseconds(escTop_us);
