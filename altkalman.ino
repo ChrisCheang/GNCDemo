@@ -408,29 +408,62 @@ void loop() {
 
     // --- TVC & ROLL ORIENTATION SENSING (X+ is UP) ---
     // Fetch raw quaternions (w, x, y, z)
-    float qw = myIMU.getQuatReal();
-    float qx = myIMU.getQuatI();
-    float qy = myIMU.getQuatJ();
-    float qz = myIMU.getQuatK();
+    // float qw = myIMU.getQuatReal();
+    // float qx = myIMU.getQuatI();
+    // float qy = myIMU.getQuatJ();
+    // float qz = myIMU.getQuatK();
 
-    // Rotate the Earth's "UP" vector (0, 0, 1) into the IMU's body frame for TVC Pitch/Yaw
-    float up_x = 2.0f * (qx * qz - qw * qy);
-    float up_y = 2.0f * (qy * qz + qw * qx);
-    float up_z = qw * qw - qx * qx - qy * qy + qz * qz;
+    // 1. Fetch raw quaternion from BNO085
+    float raw_qw = myIMU.getQuatReal();
+    float raw_qx = myIMU.getQuatI();
+    float raw_qy = myIMU.getQuatJ();
+    float raw_qz = myIMU.getQuatK();
 
-    // Calculate Pitch/Yaw deviation from X+ vector
-    float pitch_rad = atan2(-up_z, up_x); // Tilt around Y-axis
-    float yaw_rad   = atan2(up_y, up_x);  // Tilt around Z-axis
+    // 2. Define the mounting correction quaternion inverse (q_mount^-1)
+    // Corrects the static -90 deg Y-axis pitch offset from vertical mounting
+    const float m_w =  0.7071068f;
+    const float m_x =  0.0f;
+    const float m_y =  0.7071068f;
+    const float m_z =  0.0f;
+
+    // 3. Perform Hamilton Quaternion Product: q_body = q_mount_inv * q_raw
+    float qw = m_w * raw_qw - m_x * raw_qx - m_y * raw_qy - m_z * raw_qz;
+    float qx = m_w * raw_qx + m_x * raw_qw + m_y * raw_qz - m_z * raw_qy;
+    float qy = m_w * raw_qy - m_x * raw_qz + m_y * raw_qw + m_z * raw_qx;
+    float qz = m_w * raw_qz + m_x * raw_qy - m_y * raw_qx + m_z * raw_qw;
+
+    // 4. Normalize the result to prevent numerical drift in PID
+    float norm = sqrtf(qw * qw + qx * qx + qy * qy + qz * qz);
+    if (norm > 0.0f) {
+        qw /= norm;
+        qx /= norm;
+        qy /= norm;
+        qz /= norm;
+    }
+
+    // With the mounting correction applied, the quaternion (qw, qx, qy, qz)
+    // now represents a sensor sitting perfectly flat. Z+ is the vertical axis.
+    
+    float sin_yaw = 2.0f * (qw * qz + qx * qy);
+    float cos_yaw = 1.0f - 2.0f * (qy * qy + qz * qz);
+    float yaw_rad = -atan2(sin_yaw, cos_yaw);
+
+    float sin_pitch = 2.0f * (qw * qy - qz * qx);
+    float pitch_rad;
+    if (abs(sin_pitch) >= 1.0f) {
+        pitch_rad = copysign(PI / 2.0f, sin_pitch); // Clamping failsafe for floating-point bounds
+    } else {
+        pitch_rad = asin(sin_pitch);
+    }
+
+    float sin_roll = 2.0f * (qw * qx + qy * qz);
+    float cos_roll = 1.0f - 2.0f * (qx * qx + qy * qy);
+    float roll_rad = atan2(sin_roll, cos_roll); 
+
+    // Convert to degrees for telemetry and PID controller inputs
+    float roll_deg  = roll_rad  * (180.0f / PI);
     float pitch_deg = pitch_rad * (180.0f / PI);
-    float yaw_deg   = yaw_rad * (180.0f / PI);
-
-    // Calculate Roll as the angle between the Earth-fixed XZ plane and the body Y-axis
-    // (Normal to Earth XZ plane is Earth Y-axis; dot product with Body Y-axis gives sin(angle))
-    float body_y_earth_y = qw * qw - qx * qx + qy * qy - qz * qz;
-    if (body_y_earth_y > 1.0f) body_y_earth_y = 1.0f;
-    if (body_y_earth_y < -1.0f) body_y_earth_y = -1.0f;
-    float raw_roll_rad = asin(body_y_earth_y)- 0*PI/2;
-    float roll_deg = raw_roll_rad * (180.0f / PI);
+    float yaw_deg   = yaw_rad   * (180.0f / PI);
 
     int escTop_us = 1000;
     int escBot_us = 1000;
@@ -489,7 +522,7 @@ void loop() {
       yaw_output_deg   = constrain(yaw_output_deg, -max_gimbal_deg, max_gimbal_deg);
 
       // 6. INVERSE KINEMATICS PIPELINE (Pitch & Yaw via TVC Servos)
-      float desired_gimbal_pitch_rad = pitch_output_deg * (PI / 180.0f);
+      float desired_gimbal_pitch_rad = - pitch_output_deg * (PI / 180.0f);
       float desired_gimbal_yaw_rad   = yaw_output_deg * (PI / 180.0f);
 
 
