@@ -4,6 +4,9 @@
 #include <Servo.h> 
 #include <math.h>
 
+#include <Arduino.h>
+#include <MAVLink.h>
+
 // ---------------------------------------------------------
 // HARDWARE DEFINITIONS 
 // ---------------------------------------------------------
@@ -91,6 +94,20 @@ int max_throttle_us = 1950;   // Maximum throttle limit for safety during testin
 
 unsigned long last_telemetry_time = 0;
 const unsigned long TELEMETRY_INTERVAL_US = 20000; // 50 Hz (20 ms)
+
+// --- Optical Flow Variables ---
+float flow_vel_x_m_s = 0.0f;  // Velocity in X (m/s)
+float flow_vel_y_m_s = 0.0f;  // Velocity in Y (m/s)
+uint8_t flow_quality = 0;     // Optical flow confidence (0-255)
+
+// --- ToF (Distance) Variables ---
+float tof_distance_m = 0.0f;  // Distance to ground (meters)
+uint8_t tof_strength = 0;     // Signal quality / strength (0-100)
+uint8_t tof_precision = 0;    // Measurement covariance/precision (if populated by Micoair)
+
+// Timestamps for failsafe checks
+unsigned long last_flow_ms = 0;
+unsigned long last_tof_ms = 0;
 
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
@@ -378,6 +395,14 @@ void setup() {
   baselinePressure = pressure_event.pressure;
   baselineTemp = temp_event.temperature;
 
+  // Teensy 4.1 RX4 (Pin 16) / TX4 (Pin 17)
+  // The MTF-01P defaults to 115200 baud for MAVLink
+  Serial4.begin(115200); 
+  
+  // Wait for USB Serial to connect (optional, for debugging)
+  while (!Serial && millis() < 3000);
+  Serial.println("MTF-01P MAVLink Parser Initialized on Serial4");
+
   delay(2000);
   Serial.print("setup complete");
   delay(2000);
@@ -464,6 +489,60 @@ void loop() {
     float roll_deg  = roll_rad  * (180.0f / PI);
     float pitch_deg = pitch_rad * (180.0f / PI);
     float yaw_deg   = yaw_rad   * (180.0f / PI);
+
+
+    // optical flow data parsing
+    mavlink_message_t msg;
+    mavlink_status_t status;
+
+    // Read all available data on Serial4 without blocking
+    while (Serial4.available() > 0) {
+      uint8_t c = Serial4.read();
+
+      // Pass each byte to the MAVLink decoder
+      if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
+        
+        // Optional filter: If you specifically want to ignore other sensors 
+        // and only listen to your Component ID 88, uncomment the line below:
+        // if (msg.compid != 88) continue; 
+
+        switch (msg.msgid) {
+            
+          // 1. Parse Optical Flow Velocity & Quality (#100)
+          case MAVLINK_MSG_ID_OPTICAL_FLOW: {
+            mavlink_optical_flow_t flow;
+            mavlink_msg_optical_flow_decode(&msg, &flow);
+            
+            flow_quality = flow.quality; // Flow confidence (0 - 255)
+
+            // Fallback logic: If float flow_comp_m_x is 0, read integer flow_x / flow_y
+            if (abs(flow.flow_comp_m_x) > 0.001f || abs(flow.flow_comp_m_y) > 0.001f) {
+                flow_vel_x_m_s = flow.flow_comp_m_x;
+                flow_vel_y_m_s = flow.flow_comp_m_y;
+            } else {
+                // Convert integer flow delta to velocity (scale factor of 1000.0f)
+                flow_vel_x_m_s = (float)flow.flow_x / 1000.0f; 
+                flow_vel_y_m_s = (float)flow.flow_y / 1000.0f;
+            }
+            break;
+          }
+
+          // 2. Parse ToF Distance, Strength & Precision (#132)
+          case MAVLINK_MSG_ID_DISTANCE_SENSOR: {
+            mavlink_distance_sensor_t dist;
+            mavlink_msg_distance_sensor_decode(&msg, &dist);
+            
+            // Convert current_distance from cm to meters
+            tof_distance_m = (float)dist.current_distance / 100.0f; 
+            
+            // Extract ToF Signal Quality & Precision
+            tof_strength  = dist.signal_quality; // Valid if MAVLink v2 packet
+            tof_precision = dist.covariance;     // 0 if module does not transmit variance
+            break;
+          }
+        }
+      }
+    }
 
     int escTop_us = 1000;
     int escBot_us = 1000;
@@ -588,38 +667,44 @@ void loop() {
     // 2. Gate telemetry output to 50 Hz non-blocking
     unsigned long current_micros = micros();
     if (current_micros - last_telemetry_time >= TELEMETRY_INTERVAL_US) {
-        last_telemetry_time = current_micros;
-        
-        // Only attempt to transmit if buffer is clear
-        if (Serial && Serial.availableForWrite() >= 128) {
-          // --- TELEMETRY SERIAL PRINT (CSV FORMAT) ---
-          // Quaternions (w, x, y, z)
-          Serial.print(qw);                Serial.print(",");
-          Serial.print(qx);                Serial.print(",");
-          Serial.print(qy);                Serial.print(",");
-          Serial.print(qz);                Serial.print(",");
+      last_telemetry_time = current_micros;
+      
+      // Only attempt to transmit if buffer is clear
+      if (Serial && Serial.availableForWrite() >= 128) {
+        // --- TELEMETRY SERIAL PRINT (CSV FORMAT) ---
+        // Quaternions (w, x, y, z)
+        Serial.print(qw);                Serial.print(",");
+        Serial.print(qx);                Serial.print(",");
+        Serial.print(qy);                Serial.print(",");
+        Serial.print(qz);                Serial.print(",");
 
-          // Orientation Angles (Pitch, Yaw, Roll in deg)
-          Serial.print(pitch_deg);         Serial.print(",");
-          Serial.print(yaw_deg);           Serial.print(",");
-          Serial.print(roll_deg);          Serial.print(",");
+        // Orientation Angles (Pitch, Yaw, Roll in deg)
+        Serial.print(pitch_deg);         Serial.print(",");
+        Serial.print(yaw_deg);           Serial.print(",");
+        Serial.print(roll_deg);          Serial.print(",");
 
-          // Angular Rates (Pitch, Yaw, Roll rates in deg/s)
-          Serial.print(pitch_d_filtered);  Serial.print(",");
-          Serial.print(yaw_d_filtered);    Serial.print(",");
-          Serial.print(roll_d_filtered);   Serial.print(",");
+        // Angular Rates (Pitch, Yaw, Roll rates in deg/s)
+        Serial.print(pitch_d_filtered);  Serial.print(",");
+        Serial.print(yaw_d_filtered);    Serial.print(",");
+        Serial.print(roll_d_filtered);   Serial.print(",");
 
-          // Kalman Filtered 1D Altitude (meters)
-          Serial.print(kalman.x[0], 4);       Serial.print(",");
+        // Kalman Filtered 1D Altitude (meters)
+        Serial.print(kalman.x[0], 4);       Serial.print(",");
 
-          // Top & Bottom Motor Pulse Widths (microseconds)
-          Serial.print(escTop_us);            Serial.print(",");
-          Serial.print(escBot_us);            Serial.print(",");
+        // Top & Bottom Motor Pulse Widths (microseconds)
+        Serial.print(escTop_us);            Serial.print(",");
+        Serial.print(escBot_us);            Serial.print(",");
 
-          // Servo Command Angles (deg)
-          Serial.print(pitchServo.readMicroseconds());     Serial.print(",");
-          Serial.println(yawServo.readMicroseconds());
-        }
+        // Servo Command Angles (deg)
+        Serial.print(pitchServo.readMicroseconds());     Serial.print(",");
+        Serial.println(yawServo.readMicroseconds());
+
+        // MTF01P
+        Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.2fm/s, VelY: %.2fm/s (Flow Qual: %d)\n",
+                    tof_distance_m, tof_strength, tof_precision, 
+                    flow_vel_x_m_s, flow_vel_y_m_s, flow_quality);
+
+      }
     }
 
   }
