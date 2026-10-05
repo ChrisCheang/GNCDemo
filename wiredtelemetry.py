@@ -90,6 +90,10 @@ class FlightTelemetryGUI(QtWidgets.QMainWindow):
         self.plot_pos_2d.showGrid(x=True, y=True, alpha=0.3)
         self.plot_pos_2d.setAspectLocked(True, ratio=1.0)                       # Maintain 1:1 spatial aspect ratio
         
+        # Lock 2D view limits to ±3m on both axes
+        self.plot_pos_2d.setXRange(-3, 3, padding=0)
+        self.plot_pos_2d.setYRange(-3, 3, padding=0)
+
         # Invert X-axis so positive Y points Left according to NWU standard top-down view
         self.plot_pos_2d.getPlotItem().invertX(True)
 
@@ -146,7 +150,7 @@ class FlightTelemetryGUI(QtWidgets.QMainWindow):
                 continue
 
         # Keep buffer bounded for performance during long live runs
-        if len(self.data_df) > 500:
+        if len(self.data_df) > 5000:
             self.data_df = self.data_df.iloc[-5000:].reset_index(drop=True)
 
         self.update_plots()
@@ -155,25 +159,28 @@ class FlightTelemetryGUI(QtWidgets.QMainWindow):
         if self.data_df.empty:
             return
 
-        idx = np.arange(len(self.data_df))
+        # 5-second window at 50 Hz UI timer rate (250 samples)
+        window_size = 250
+        df_view = self.data_df.iloc[-window_size:]
+        idx = np.arange(len(self.data_df) - len(df_view), len(self.data_df))
 
         # 1. Update Orientation Angles
-        self.curve_pitch.setData(idx, self.data_df["pitch_deg"].values)
-        self.curve_yaw.setData(idx, self.data_df["yaw_deg"].values)
-        self.curve_roll.setData(idx, self.data_df["roll_deg"].values)
+        self.curve_pitch.setData(idx, df_view["pitch_deg"].values)
+        self.curve_yaw.setData(idx, df_view["yaw_deg"].values)
+        self.curve_roll.setData(idx, df_view["roll_deg"].values)
 
         # 2. Update Actuator Microseconds
-        self.curve_esc_top.setData(idx, self.data_df["esc_top_us"].values)
-        self.curve_esc_bot.setData(idx, self.data_df["esc_bot_us"].values)
-        self.curve_servo_p.setData(idx, self.data_df["servo_pitch_us"].values)
-        self.curve_servo_y.setData(idx, self.data_df["servo_yaw_us"].values)
+        self.curve_esc_top.setData(idx, df_view["esc_top_us"].values)
+        self.curve_esc_bot.setData(idx, df_view["esc_bot_us"].values)
+        self.curve_servo_p.setData(idx, df_view["servo_pitch_us"].values)
+        self.curve_servo_y.setData(idx, df_view["servo_yaw_us"].values)
 
         # 3. Update Altitude (Z)
-        self.curve_alt.setData(idx, self.data_df["altitude_z"].values)
+        self.curve_alt.setData(idx, df_view["altitude_z"].values)
 
         # 4. Update 2D NWU Top-Down Position Plot
-        pos_x = self.data_df["pos_x"].values  # Vertical axis on graph
-        pos_y = self.data_df["pos_y"].values  # Horizontal axis on graph
+        pos_x = df_view["pos_x"].values  # Vertical axis on graph
+        pos_y = df_view["pos_y"].values  # Horizontal axis on graph
         
         # Plot (Y, X) so Y position maps to horizontal axis and X position maps to vertical axis
         self.curve_pos_2d.setData(pos_y, pos_x)
