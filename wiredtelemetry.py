@@ -1,323 +1,191 @@
 import sys
-import time
-import numpy as np
+import csv
 import serial
-
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QVBoxLayout, QLabel, QMessageBox
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer
-from PyQt5.QtGui import QQuaternion, QMatrix4x4
-
+import numpy as np
+import pandas as pd
+from PyQt5 import QtWidgets, QtCore
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
 
-from OpenGL.GL import (
-    GL_LINE_SMOOTH,
-    GL_LINE_SMOOTH_HINT,
-    GL_LINES,
-    GL_NICEST,
-    glBegin,
-    glColor4f,
-    glEnable,
-    glEnd,
-    glHint,
-    glLineWidth,
-    glVertex3f,
-)
+# CSV Column Header Definitions (17 variables in exact stream order)
+COLUMN_NAMES = [
+    "qw", "qx", "qy", "qz",
+    "pitch_deg", "yaw_deg", "roll_deg",
+    "pitch_rate", "yaw_rate", "roll_rate",
+    "altitude_z",
+    "esc_top_us", "esc_bot_us",
+    "servo_pitch_us", "servo_yaw_us",
+    "pos_x", "pos_y"
+]
 
-# ==========================================
-# SET YOUR COM PORT HERE
-# ==========================================
-TARGET_PORT = "COM7"
-BAUD_RATE = 115200
-# ==========================================
-
-
-# ---------------------------------------------------------
-# Asynchronous Serial Processing Thread 
-# (Using strict DTR/RTS logic for Teensy USB CDC)
-# ---------------------------------------------------------
-class SerialWorker(QThread):
-    data_received = pyqtSignal(list)
-
-    def __init__(self, port, baudrate=115200):
+class FlightTelemetryGUI(QtWidgets.QMainWindow):
+    def __init__(self, serial_port='COM7', baud_rate=115200):
         super().__init__()
-        self.port = port
-        self.baudrate = baudrate
-        self.running = True
-        self.start_time = time.time()
+        self.setWindowTitle("Coaxial TVC Flight Telemetry & Position Monitor")
+        self.resize(1400, 900)
+
+        # Serial & Data Storage Initializations
+        self.serial_port = serial_port
+        self.baud_rate = baud_rate
         self.ser = None
+        
+        # Buffer for live or loaded CSV data
+        self.data_df = pd.DataFrame(columns=COLUMN_NAMES)
 
-    def run(self):
-        try:
-            # Initialize serial object
-            self.ser = serial.Serial()
-            self.ser.port = self.port
-            self.ser.baudrate = self.baudrate
-            self.ser.timeout = 1
-            
-            # Open port and assert handshaking (CRITICAL FOR TEENSY)
-            self.ser.open()
-            self.ser.dtr = True
-            self.ser.rts = True
-            
-            # Give the USB stack a moment to wake up, then clear old data
-            time.sleep(0.5)
-            self.ser.reset_input_buffer()
-            
-        except Exception as e:
-            print(f"Worker failed to open {self.port}: {e}")
-            return
+        # Build UI Layout
+        self._init_ui()
 
-        while self.running:
+        # Serial thread / timer setup for live streaming
+        if self.serial_port:
             try:
-                raw_bytes = self.ser.readline()
-                if not raw_bytes: 
-                    continue
-                
-                line_str = raw_bytes.decode('utf-8', errors='ignore').strip()
-                parts = line_str.split(',')
-                
-                # Updated to expect 15 telemetry values
-                if len(parts) == 15:
-                    current_time = time.time() - self.start_time
-                    data_tuple = [current_time] + [float(val) for val in parts]
-                    self.data_received.emit(data_tuple)
-            except Exception:
-                pass 
-                
-        if self.ser and self.ser.is_open:
-            self.ser.close()
+                self.ser = serial.Serial(self.serial_port, self.baud_rate, timeout=0.05)
+                self.timer = QtCore.QTimer()
+                self.timer.timeout.connect(self._read_serial_data)
+                self.timer.start(20)  # 50 Hz UI update rate
+            except Exception as e:
+                print(f"[ERROR] Failed to open serial port {self.serial_port}: {e}")
 
-    def stop(self):
-        self.running = False
-        self.wait()
+    def _init_ui(self):
+        central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(central_widget)
+        main_layout = QtWidgets.QHBoxLayout(central_widget)
 
-
-# ---------------------------------------------------------
-# Telemetry Main Dashboard
-# ---------------------------------------------------------
-class TelemetryDashboard(QMainWindow):
-    def __init__(self, port):
-        super().__init__()
-        self.setWindowTitle(f"Teensy 4.1 Flight Telemetry - Connected: {port}")
-        self.resize(1500, 950)
-
-        # Apply global dark mode configuration
-        pg.setConfigOption('background', '#121212')
-        pg.setConfigOption('foreground', 'w')
+        # Config PyQTGraph settings
         pg.setConfigOptions(antialias=True)
 
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        layout = QGridLayout(central_widget)
-
-        # Rolling Buffer Configuration
-        self.max_points = 2000
-        self.time_data = np.zeros(self.max_points)
-        self.data_buffers = {
-            'euler': np.zeros((3, self.max_points)), # Pitch, Yaw, Roll
-            'rates': np.zeros((3, self.max_points)), # P_rate, Y_rate, R_rate
-            'alt': np.zeros((1, self.max_points)),   # Kalman Alt
-            'esc': np.zeros((2, self.max_points)),   # Top Motor, Bottom Motor
-            'servo': np.zeros((2, self.max_points))  # Pitch Servo, Yaw Servo
-        }
-        self.ptr = 0 
-        self.latest_q = [1.0, 0.0, 0.0, 0.0] # Store latest quaternion for the timer
-
-        # Create PyQtGraph 2D Plots
-        self.plot_euler = pg.PlotWidget(title="Euler Angles (deg)")
-        self.plot_rates = pg.PlotWidget(title="Angular Rates (deg/s)")
-        self.plot_alt = pg.PlotWidget(title="Kalman Filtered Altitude (m)")
-        self.plot_esc = pg.PlotWidget(title="Coaxial ESC Outputs (µs)")
-        self.plot_servo = pg.PlotWidget(title="TVC Servo Commands (µs)")
-
-        # Link X-Axes across plots
-        self.plot_rates.setXLink(self.plot_euler)
-        self.plot_alt.setXLink(self.plot_euler)
-        self.plot_esc.setXLink(self.plot_euler)
-        self.plot_servo.setXLink(self.plot_euler)
-
-        layout.addWidget(self.plot_euler, 0, 0)
-        layout.addWidget(self.plot_rates, 1, 0)
-        layout.addWidget(self.plot_alt, 2, 0)
-        layout.addWidget(self.plot_esc, 3, 0)
-        layout.addWidget(self.plot_servo, 4, 0)
-
-        # Plot Curves
-        self.curve_pitch = self.plot_euler.plot(pen=pg.mkPen('r', width=2), name="Pitch")
-        self.curve_yaw = self.plot_euler.plot(pen=pg.mkPen('g', width=2), name="Yaw")
-        self.curve_roll = self.plot_euler.plot(pen=pg.mkPen('b', width=2), name="Roll")
-
-        self.curve_prate = self.plot_rates.plot(pen=pg.mkPen('r', width=2))
-        self.curve_yrate = self.plot_rates.plot(pen=pg.mkPen('g', width=2))
-        self.curve_rrate = self.plot_rates.plot(pen=pg.mkPen('b', width=2))
-
-        self.curve_alt = self.plot_alt.plot(pen=pg.mkPen('c', width=2))
-
-        self.curve_esc_top = self.plot_esc.plot(pen=pg.mkPen('#FFA500', width=2), name="Top Motor")
-        self.curve_esc_bot = self.plot_esc.plot(pen=pg.mkPen('#00FFFF', width=2), name="Bottom Motor")
-
-        self.curve_servo_pitch = self.plot_servo.plot(pen=pg.mkPen('#FF00FF', width=2), name="Pitch Servo")
-        self.curve_servo_yaw = self.plot_servo.plot(pen=pg.mkPen('#FFFF00', width=2), name="Yaw Servo")
-
-        # 3D OpenGL Viewport
-        self.view_3d = gl.GLViewWidget()
-        self.view_3d.opts['distance'] = 40
-        self.view_3d.setBackgroundColor('#121212')
+        # Left Side Layout: Orientation, Actuators, Altitude
+        left_layout = QtWidgets.QVBoxLayout()
         
-        grid = gl.GLGridItem()
-        grid.scale(2, 2, 2)
-        self.view_3d.addItem(grid)
+        # Plot 1: Attitudinal Euler Angles
+        self.plot_euler = pg.PlotWidget(title="Orientation Angles (NWU)")
+        self.plot_euler.addLegend()
+        self.plot_euler.setLabel('left', 'Angle', units='deg')
+        self.curve_pitch = self.plot_euler.plot(pen=pg.mkPen('r', width=1.5), name="Pitch (Y)")
+        self.curve_yaw   = self.plot_euler.plot(pen=pg.mkPen('g', width=1.5), name="Yaw (X)")
+        self.curve_roll  = self.plot_euler.plot(pen=pg.mkPen('b', width=1.5), name="Roll (Z)")
+        left_layout.addWidget(self.plot_euler)
 
-        # RGB Frame Axes (Red=X, Green=Y, Blue=Z)
-        self.axis_item = gl.GLAxisItem()
-        self.axis_item.setSize(x=10, y=10, z=10)
+        # Plot 2: Actuators (ESCs & Servos)
+        self.plot_actuators = pg.PlotWidget(title="Motor & TVC Servo Microseconds")
+        self.plot_actuators.addLegend()
+        self.plot_actuators.setLabel('left', 'Pulse Width', units='us')
+        self.curve_esc_top    = self.plot_actuators.plot(pen=pg.mkPen('c', width=1.5), name="ESC Top")
+        self.curve_esc_bot    = self.plot_actuators.plot(pen=pg.mkPen('m', width=1.5), name="ESC Bot")
+        self.curve_servo_p    = self.plot_actuators.plot(pen=pg.mkPen('y', width=1.5), name="Servo Pitch")
+        self.curve_servo_y    = self.plot_actuators.plot(pen=pg.mkPen('w', width=1.5), name="Servo Yaw")
+        left_layout.addWidget(self.plot_actuators)
+
+        # Plot 3: 1D Altitude Trajectory
+        self.plot_alt = pg.PlotWidget(title="Kalman Filtered Altitude (Z)")
+        self.plot_alt.setLabel('left', 'Altitude', units='m')
+        self.plot_alt.setLabel('bottom', 'Sample Index')
+        self.curve_alt = self.plot_alt.plot(pen=pg.mkPen('g', width=2), name="Alt Z")
+        left_layout.addWidget(self.plot_alt)
+
+        # Right Side Layout: Top-Down 2D Position Plot (X Vertical Up, Y Horizontal Left)
+        right_layout = QtWidgets.QVBoxLayout()
+
+        self.plot_pos_2d = pg.PlotWidget(title="2D Earth-Fixed Position (Top-Down View from Z)")
+        self.plot_pos_2d.setLabel('left', 'X Position / North', units='m')      # Vertical axis
+        self.plot_pos_2d.setLabel('bottom', 'Y Position / West', units='m')    # Horizontal axis
+        self.plot_pos_2d.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_pos_2d.setAspectLocked(True, ratio=1.0)                       # Maintain 1:1 spatial aspect ratio
         
-        # Base transform: rotate -90 deg around Y to set X+ as local UP
-        base_transform = QMatrix4x4()
-        base_transform.rotate(-90, 0, 1, 0)
-        self.axis_item.setTransform(base_transform)
-        
-        self.view_3d.addItem(self.axis_item)
-        
-        layout_3d = QVBoxLayout()
-        label_3d = QLabel("Quaternion Orientation (X+ Up Base)")
-        label_3d.setStyleSheet("color: white; font-weight: bold; font-size: 14px; text-align: center;")
-        layout_3d.addWidget(label_3d)
-        layout_3d.addWidget(self.view_3d)
-        
-        # Updated row span to 5 so the 3D widget stretches down alongside the new 5th plot
-        layout.addLayout(layout_3d, 0, 1, 5, 1)
-        layout.setColumnStretch(0, 2)
-        layout.setColumnStretch(1, 1)
+        # Invert X-axis so positive Y points Left according to NWU standard top-down view
+        self.plot_pos_2d.getPlotItem().invertX(True)
 
-        # Start Async Worker Thread
-        self.worker = SerialWorker(port=port, baudrate=115200)
-        self.worker.data_received.connect(self.update_data)
-        self.worker.start()
+        # Trajectory curve line and live position marker
+        self.curve_pos_2d = self.plot_pos_2d.plot(pen=pg.mkPen('y', width=2), name="Path")
+        self.point_current_pos = self.plot_pos_2d.plot(
+            pen=None, symbol='o', symbolSize=10, symbolBrush='r', name="Current Pos"
+        )
+        right_layout.addWidget(self.plot_pos_2d)
 
-        # GUI Update Timer (~30 FPS)
-        self.gui_timer = QTimer()
-        self.gui_timer.timeout.connect(self.update_gui)
-        self.gui_timer.start(33)
+        # Control panel buttons (e.g., CSV Load)
+        btn_layout = QtWidgets.QHBoxLayout()
+        self.btn_load_csv = QtWidgets.QPushButton("Load CSV Log")
+        self.btn_load_csv.clicked.connect(self.load_csv_dialog)
+        btn_layout.addWidget(self.btn_load_csv)
+        right_layout.addLayout(btn_layout)
 
-    def update_data(self, data):
-        # Unpack telemetry list
-        t = data[0]
-        q = data[1:5]        # [qw, qx, qy, qz]
-        euler = data[5:8]    # [pitch, yaw, roll]
-        rates = data[8:11]   # [prate, yrate, rrate]
-        alt = data[11]       # [kalman_alt]
-        escs = data[12:14]   # [esc_top, esc_bot]
-        servos = data[14:16] # [servo_pitch, servo_yaw]
+        # Combine main layouts
+        main_layout.addLayout(left_layout, stretch=1)
+        main_layout.addLayout(right_layout, stretch=1)
 
-        # Shift ring buffers
-        self.time_data[:-1] = self.time_data[1:]
-        self.time_data[-1] = t
-
-        for key, vals in zip(['euler', 'rates', 'alt', 'esc', 'servo'], [euler, rates, [alt], escs, servos]):
-            self.data_buffers[key][:, :-1] = self.data_buffers[key][:, 1:]
-            for i in range(len(vals)):
-                self.data_buffers[key][i, -1] = vals[i]
-
-        if self.ptr < self.max_points:
-            self.ptr += 1
-            
-        # Save quaternion to be updated on the next GUI timer tick
-        self.latest_q = q 
-
-    def update_gui(self):
-        # Only attempt to update if we have actually received data
-        if self.ptr > 0:
+    def load_csv_file(self, filepath):
+        """Loads and parses static extended 17-variable CSV log files."""
+        try:
+            df = pd.read_csv(filepath, names=COLUMN_NAMES, header=None)
+            self.data_df = df.apply(pd.to_numeric, errors='coerce').dropna()
             self.update_plots()
-            self.update_3d(self.latest_q)
+            print(f"[INFO] Successfully loaded {len(self.data_df)} telemetry samples from {filepath}")
+        except Exception as e:
+            print(f"[ERROR] Failed to load CSV file: {e}")
+
+    def load_csv_dialog(self):
+        filename, _ = QtWidgets.QFileDialog.getOpenFileName(self, "Open CSV Telemetry Log", "", "CSV Files (*.csv);;Text Files (*.txt)")
+        if filename:
+            self.load_csv_file(filename)
+
+    def _read_serial_data(self):
+        """Parses real-time serial streams containing 17 comma-separated floats."""
+        if not self.ser or not self.ser.in_waiting:
+            return
+
+        while self.ser.in_waiting > 0:
+            try:
+                line = self.ser.readline().decode('utf-8', errors='ignore').strip()
+                if not line:
+                    continue
+                
+                parts = line.split(',')
+                if len(parts) == 17:
+                    values = [float(p) for p in parts]
+                    new_row = pd.DataFrame([values], columns=COLUMN_NAMES)
+                    self.data_df = pd.concat([self.data_df, new_row], ignore_index=True)
+            except ValueError:
+                continue
+
+        # Keep buffer bounded for performance during long live runs
+        if len(self.data_df) > 500:
+            self.data_df = self.data_df.iloc[-5000:].reset_index(drop=True)
+
+        self.update_plots()
 
     def update_plots(self):
-        t_valid = self.time_data[-self.ptr:]
+        if self.data_df.empty:
+            return
+
+        idx = np.arange(len(self.data_df))
+
+        # 1. Update Orientation Angles
+        self.curve_pitch.setData(idx, self.data_df["pitch_deg"].values)
+        self.curve_yaw.setData(idx, self.data_df["yaw_deg"].values)
+        self.curve_roll.setData(idx, self.data_df["roll_deg"].values)
+
+        # 2. Update Actuator Microseconds
+        self.curve_esc_top.setData(idx, self.data_df["esc_top_us"].values)
+        self.curve_esc_bot.setData(idx, self.data_df["esc_bot_us"].values)
+        self.curve_servo_p.setData(idx, self.data_df["servo_pitch_us"].values)
+        self.curve_servo_y.setData(idx, self.data_df["servo_yaw_us"].values)
+
+        # 3. Update Altitude (Z)
+        self.curve_alt.setData(idx, self.data_df["altitude_z"].values)
+
+        # 4. Update 2D NWU Top-Down Position Plot
+        pos_x = self.data_df["pos_x"].values  # Vertical axis on graph
+        pos_y = self.data_df["pos_y"].values  # Horizontal axis on graph
         
-        # Update 2D Curves
-        self.curve_pitch.setData(t_valid, self.data_buffers['euler'][0, -self.ptr:])
-        self.curve_yaw.setData(t_valid, self.data_buffers['euler'][1, -self.ptr:])
-        self.curve_roll.setData(t_valid, self.data_buffers['euler'][2, -self.ptr:])
-        
-        self.curve_prate.setData(t_valid, self.data_buffers['rates'][0, -self.ptr:])
-        self.curve_yrate.setData(t_valid, self.data_buffers['rates'][1, -self.ptr:])
-        self.curve_rrate.setData(t_valid, self.data_buffers['rates'][2, -self.ptr:])
-        
-        self.curve_alt.setData(t_valid, self.data_buffers['alt'][0, -self.ptr:])
-        
-        self.curve_esc_top.setData(t_valid, self.data_buffers['esc'][0, -self.ptr:])
-        self.curve_esc_bot.setData(t_valid, self.data_buffers['esc'][1, -self.ptr:])
+        # Plot (Y, X) so Y position maps to horizontal axis and X position maps to vertical axis
+        self.curve_pos_2d.setData(pos_y, pos_x)
+        if len(pos_x) > 0:
+            self.point_current_pos.setData([pos_y[-1]], [pos_x[-1]])
 
-        self.curve_servo_pitch.setData(t_valid, self.data_buffers['servo'][0, -self.ptr:])
-        self.curve_servo_yaw.setData(t_valid, self.data_buffers['servo'][1, -self.ptr:])
+if __name__ == "__main__":
+    app = QtWidgets.QApplication(sys.argv)
 
-        # Oscilloscope-style 10-second Discrete Page Shift
-        current_time = t_valid[-1]
-        window_size = 10.0
-        
-        x_min = (current_time // window_size) * window_size
-        x_max = x_min + window_size
-        
-        self.plot_euler.setXRange(x_min, x_max, padding=0)
+    # Defaults to 'COM7' if no port is passed via command-line arguments
+    port = sys.argv[1] if len(sys.argv) > 1 else 'COM7'
+    gui = FlightTelemetryGUI(serial_port=port)
+    gui.show()
 
-    def update_3d(self, q):
-        qw, qx, qy, qz = q
-
-        # Override paint on first call to set OpenGL line width to 4x (default is 1.0)
-        if not hasattr(self.axis_item, "_thickened"):
-            orig_paint = self.axis_item.paint
-
-            def thick_paint():
-                glLineWidth(16.0)
-                orig_paint()
-
-            self.axis_item.paint = thick_paint
-            self.axis_item._thickened = True
-
-        # Construct Qt Quaternion object
-        quat = QQuaternion(qw, qx, qy, qz)
-
-        # Base Transform (X+ UP) + Live Rotation
-        transform = QMatrix4x4()
-        #transform.rotate(-90, 0, 1, 0)
-        transform.rotate(quat)
-
-        self.axis_item.setTransform(transform)
-
-    def closeEvent(self, event):
-        self.gui_timer.stop()
-        self.worker.stop()
-        event.accept()
-
-
-# ---------------------------------------------------------
-# Execution Entry Point
-# ---------------------------------------------------------
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    
-    # Pre-flight check to ensure the port is available
-    try:
-        test_ser = serial.Serial()
-        test_ser.port = TARGET_PORT
-        test_ser.baudrate = BAUD_RATE
-        test_ser.timeout = 1
-        
-        test_ser.open()
-        test_ser.dtr = True
-        test_ser.rts = True
-        test_ser.close()
-        
-    except serial.SerialException as e:
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Critical)
-        msg.setWindowTitle("Connection Error")
-        msg.setText(f"Could not open {TARGET_PORT}.\n\nError: {e}\n\nEnsure the Arduino IDE Serial Monitor is closed and the board is plugged in.")
-        msg.exec_()
-        sys.exit()
-        
-    # Start main application
-    window = TelemetryDashboard(TARGET_PORT)
-    window.show()
     sys.exit(app.exec_())
