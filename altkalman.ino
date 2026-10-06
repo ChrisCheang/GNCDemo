@@ -121,186 +121,195 @@ Adafruit_DPS310 dps;
 
 class StateEstimator6D {
 public:
-    // State Vector: [px, py, pz, vx, vy, vz] in Earth-Fixed NWU Frame
-    float x[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  // State Vector: [px, py, pz, vx, vy, vz] in Earth-Fixed NWU Frame
+  float x[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  
+  // 6x6 Error Covariance Matrix
+  float P[6][6] = {0.0f};
+
+  // --- PROCESS NOISE VARIANCES (Q) ---
+  float Q_p = 0.0001f; // Position process noise
+  float Q_v = 0.001f;  // Velocity process noise
+
+  // --- MEASUREMENT NOISE VARIANCES (R) ---
+  float R_z    = 5.0f; // ToF Altitude measurement variance
+  float R_flow = 0.10f; // Optical Flow velocity measurement variance
+
+  StateEstimator6D() {
+    for (int i = 0; i < 6; i++) P[i][i] = 1.0f;
+  }
+
+  // ---------------------------------------------------------
+  // 1. PREDICT STEP (Using Earth-Frame Accelerations)
+  // ---------------------------------------------------------
+  void predict(float ax, float ay, float az, float dt) {
+    float dt2 = dt * dt;
+
+    float x_pred[6];
+    x_pred[0] = x[0] + x[3] * dt + 0.5f * ax * dt2;
+    x_pred[1] = x[1] + x[4] * dt + 0.5f * ay * dt2;
+    x_pred[2] = x[2] + x[5] * dt + 0.5f * az * dt2;
+    x_pred[3] = x[3] + ax * dt;
+    x_pred[4] = x[4] + ay * dt;
+    x_pred[5] = x[5] + az * dt;
+
+    float F[6][6] = {0.0f};
+    for (int i = 0; i < 6; i++) F[i][i] = 1.0f;
+    F[0][3] = dt; 
+    F[1][4] = dt; 
+    F[2][5] = dt;
+
+    float FP[6][6] = {0.0f};
+    for (int i = 0; i < 6; i++) {
+        for (int j = 0; j < 6; j++) {
+            FP[i][j] = F[i][0]*P[0][j] + F[i][1]*P[1][j] + F[i][2]*P[2][j] + 
+                      F[i][3]*P[3][j] + F[i][4]*P[4][j] + F[i][5]*P[5][j];
+        }
+    }
     
-    // 6x6 Error Covariance Matrix
-    float P[6][6] = {0.0f};
-
-    // --- PROCESS NOISE VARIANCES (Q) ---
-    float Q_p = 0.0001f; // Position process noise
-    float Q_v = 0.001f;  // Velocity process noise
-
-    // --- MEASUREMENT NOISE VARIANCES (R) ---
-    float R_z    = 5.0f; // ToF Altitude measurement variance
-    float R_flow = 0.10f; // Optical Flow velocity measurement variance
-
-    StateEstimator6D() {
-        for (int i = 0; i < 6; i++) P[i][i] = 1.0f;
+    for (int i = 0; i < 6; i++) {
+      for (int j = 0; j < 6; j++) {
+        P[i][j] = FP[i][0]*F[j][0] + FP[i][1]*F[j][1] + FP[i][2]*F[j][2] + 
+                  FP[i][3]*F[j][3] + FP[i][4]*F[j][4] + FP[i][5]*F[j][5];
+      }
     }
 
-    // ---------------------------------------------------------
-    // 1. PREDICT STEP (Using Earth-Frame Accelerations)
-    // ---------------------------------------------------------
-    void predict(float ax, float ay, float az, float dt) {
-        float dt2 = dt * dt;
+    for (int i = 0; i < 3; i++) P[i][i] += Q_p;
+    for (int i = 3; i < 6; i++) P[i][i] += Q_v;
+    for (int i = 0; i < 6; i++) x[i] = x_pred[i];
+  }
 
-        float x_pred[6];
-        x_pred[0] = x[0] + x[3] * dt + 0.5f * ax * dt2;
-        x_pred[1] = x[1] + x[4] * dt + 0.5f * ay * dt2;
-        x_pred[2] = x[2] + x[5] * dt + 0.5f * az * dt2;
-        x_pred[3] = x[3] + ax * dt;
-        x_pred[4] = x[4] + ay * dt;
-        x_pred[5] = x[5] + az * dt;
-
-        float F[6][6] = {0.0f};
-        for (int i = 0; i < 6; i++) F[i][i] = 1.0f;
-        F[0][3] = dt; 
-        F[1][4] = dt; 
-        F[2][5] = dt;
-
-        float FP[6][6] = {0.0f};
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) {
-                FP[i][j] = F[i][0]*P[0][j] + F[i][1]*P[1][j] + F[i][2]*P[2][j] + 
-                           F[i][3]*P[3][j] + F[i][4]*P[4][j] + F[i][5]*P[5][j];
-            }
-        }
-        
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) {
-                P[i][j] = FP[i][0]*F[j][0] + FP[i][1]*F[j][1] + FP[i][2]*F[j][2] + 
-                          FP[i][3]*F[j][3] + FP[i][4]*F[j][4] + FP[i][5]*F[j][5];
-            }
-        }
-
-        for (int i = 0; i < 3; i++) P[i][i] += Q_p;
-        for (int i = 3; i < 6; i++) P[i][i] += Q_v;
-        for (int i = 0; i < 6; i++) x[i] = x_pred[i];
+  // ---------------------------------------------------------
+  // 2. UPDATE STEP A: Altitude (ToF Distance Sensor)
+  // ---------------------------------------------------------
+  void updateAltitude(float tof_distance_m, float qw, float qx, float qy, float qz) {
+    // Unit Safety: convert cm to meters if sensor outputs raw cm values (> 50m ceiling check)
+    if (tof_distance_m > 50.0f) {
+      tof_distance_m /= 100.0f;
     }
 
-    // ---------------------------------------------------------
-    // 2. UPDATE STEP A: Altitude (ToF Distance Sensor)
-    // ---------------------------------------------------------
-    void updateAltitude(float tof_distance_m, float qw, float qx, float qy, float qz) {
-        float R20 = 2.0f * (qx * qz - qw * qy);
-        float R21 = 2.0f * (qy * qz + qw * qx);
-        float R22 = 1.0f - 2.0f * (qx * qx + qy * qy);
+    float R20 = 2.0f * (qx * qz - qw * qy);
+    float R21 = 2.0f * (qy * qz + qw * qx);
+    float R22 = 1.0f - 2.0f * (qx * qx + qy * qy);
 
-        // Correct for slant beam and lever arm offset to find true vertical height
-        float z_meas = (tof_distance_m * R22) - (R20 * SENSOR_OFFSET_X + R21 * SENSOR_OFFSET_Y + R22 * SENSOR_OFFSET_Z);
+    // Correct for slant beam and lever arm offset to find true vertical height
+    float z_meas = (tof_distance_m * R22) - (R20 * SENSOR_OFFSET_X + R21 * SENSOR_OFFSET_Y + R22 * SENSOR_OFFSET_Z);
 
-        float y = z_meas - x[2]; 
-        float S = P[2][2] + R_z; 
+    float y = z_meas - x[2]; 
+    float S = P[2][2] + R_z; 
 
-        float K[6];
-        for (int i = 0; i < 6; i++) K[i] = P[i][2] / S;
-        for (int i = 0; i < 6; i++) x[i] += K[i] * y;
+    float K[6];
+    for (int i = 0; i < 6; i++) K[i] = P[i][2] / S;
+    for (int i = 0; i < 6; i++) x[i] += K[i] * y;
 
-        float P_new[6][6];
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) {
-                P_new[i][j] = P[i][j] - K[i] * P[2][j];
-            }
-        }
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) P[i][j] = P_new[i][j];
-        }
+    float P_new[6][6];
+    for (int i = 0; i < 6; i++) {
+      for (int j = 0; j < 6; j++) {
+        P_new[i][j] = P[i][j] - K[i] * P[2][j];
+      }
     }
-
-    // ---------------------------------------------------------
-    // 3. UPDATE STEP B: X/Y Planar Velocity (MTF-01P Body Velocities)
-    // ---------------------------------------------------------
-    // flow_vel_x_m_s: Raw un-derotated linear velocity along Body +X (m/s)
-    // flow_vel_y_m_s: Raw un-derotated linear velocity along Body +Y (m/s)
-    // wx, wy, wz: Gyro angular rates (rad/s) in Body NWU Frame
-    // qw, qx, qy, qz: Body-to-Earth orientation quaternion
-    // tof_distance_m: Slanted ground distance along optical axis (m)
-    void updateFlow(float flow_vel_x_m_s, float flow_vel_y_m_s, 
-                    float wx, float wy, float wz, 
-                    float qw, float qx, float qy, float qz, 
-                    float tof_distance_m = -1.0f) {
-        
-        // Compute 3x3 Rotation Matrix (R_body_to_earth) from NWU Quaternion
-        float qx2 = qx * qx, qy2 = qy * qy, qz2 = qz * qz;
-
-        float R00 = 1.0f - 2.0f * (qy2 + qz2);
-        float R01 = 2.0f * (qx * qy - qw * qz);
-        float R02 = 2.0f * (qx * qz + qw * qy);
-
-        float R10 = 2.0f * (qx * qy + qw * qz);
-        float R11 = 1.0f - 2.0f * (qx2 + qz2);
-        float R12 = 2.0f * (qy * qz - qw * qx);
-
-        float R20 = 2.0f * (qx * qz - qw * qy);
-        float R21 = 2.0f * (qy * qz + qw * qx);
-        float R22 = 1.0f - 2.0f * (qx2 + qy2);
-
-        // Determine slanted ground distance D (optical beam distance)
-        float D = tof_distance_m;
-        if (D <= 0.05f) {
-            float min_r22 = 0.2f; // Prevent division by zero during steep roll/pitch
-            float effective_r22 = (R22 > min_r22) ? R22 : min_r22;
-            D = x[2] / effective_r22; // Fallback: estimated height / R22
-        }
-        if (D < 0.10f) D = 0.10f; // Minimum safety floor (10cm)
-
-        // 1. Gyro Derotation on Linear Velocity (m/s) using Slanted Distance D
-        // Apparent flow velocity due to rotation is omega * D
-        float v_sensor_x = flow_vel_x_m_s + (wy * D);
-        float v_sensor_y = flow_vel_y_m_s - (wx * D);
-
-        // 2. Lever Arm Offset Kinematic Correction (v_com = v_sensor - omega x r)
-        float v_com_body_x = v_sensor_x - (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y);
-        float v_com_body_y = v_sensor_y - (wz * SENSOR_OFFSET_X - wx * SENSOR_OFFSET_Z);
-        
-        // Project current Earth vertical velocity into Body Z axis
-        float v_com_body_z = R02 * x[3] + R12 * x[4] + R22 * x[5];
-
-        // 3. Rotate Body-Frame Linear Velocity to Earth-Fixed NWU Frame
-        float v_meas_earth_x = R00 * v_com_body_x + R01 * v_com_body_y + R02 * v_com_body_z;
-        float v_meas_earth_y = R10 * v_com_body_x + R11 * v_com_body_y + R12 * v_com_body_z;
-
-        // 4. 2D Extended Kalman Filter Measurement Update for Vx (x[3]) and Vy (x[4])
-        float y_innov[2];
-        y_innov[0] = v_meas_earth_x - x[3];
-        y_innov[1] = v_meas_earth_y - x[4];
-
-        float S[2][2];
-        S[0][0] = P[3][3] + R_flow;
-        S[0][1] = P[3][4];
-        S[1][0] = P[4][3];
-        S[1][1] = P[4][4] + R_flow;
-
-        float det = S[0][0] * S[1][1] - S[0][1] * S[1][0];
-        if (fabs(det) < 1e-6f) return; 
-        
-        float S_inv[2][2];
-        S_inv[0][0] =  S[1][1] / det;
-        S_inv[0][1] = -S[0][1] / det;
-        S_inv[1][0] = -S[0][1] / det;
-        S_inv[1][1] =  S[0][0] / det;
-
-        float K[6][2];
-        for (int i = 0; i < 6; i++) {
-            K[i][0] = P[i][3] * S_inv[0][0] + P[i][4] * S_inv[1][0];
-            K[i][1] = P[i][3] * S_inv[0][1] + P[i][4] * S_inv[1][1];
-        }
-
-        for (int i = 0; i < 6; i++) {
-            x[i] += K[i][0] * y_innov[0] + K[i][1] * y_innov[1];
-        }
-
-        float P_new[6][6];
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) {
-                P_new[i][j] = P[i][j] - (K[i][0] * P[3][j] + K[i][1] * P[4][j]);
-            }
-        }
-        for (int i = 0; i < 6; i++) {
-            for (int j = 0; j < 6; j++) P[i][j] = P_new[i][j];
-        }
+    for (int i = 0; i < 6; i++) {
+      for (int j = 0; j < 6; j++) P[i][j] = P_new[i][j];
     }
+  }
+
+  // ---------------------------------------------------------
+  // 3. UPDATE STEP B: X/Y Planar Velocity (MAVLink #106 Optical Flow)
+  // ---------------------------------------------------------
+  // flow_rad_s_x: Angular flow rate around Body +X axis (rad/s, MAVLink OPTICAL_FLOW)
+  // flow_rad_s_y: Angular flow rate around Body +Y axis (rad/s, MAVLink OPTICAL_FLOW)
+  // wx, wy, wz: Gyro angular rates (rad/s) in Body NWU Frame
+  // qw, qx, qy, qz: Body-to-Earth orientation quaternion
+  // tof_distance_m: Slanted ground distance along optical axis (m)
+  void updateFlow(float flow_rad_s_x, float flow_rad_s_y, 
+                  float wx, float wy, float wz, 
+                  float qw, float qx, float qy, float qz, 
+                  float tof_distance_m = -1.0f) {
+      
+      // Unit Safety: convert cm to meters if sensor outputs raw cm values (> 50m ceiling check)
+      if (tof_distance_m > 50.0f) {
+          tof_distance_m /= 100.0f;
+      }
+
+      // Compute 3x3 Rotation Matrix (R_body_to_earth) from NWU Quaternion
+      float qx2 = qx * qx, qy2 = qy * qy, qz2 = qz * qz;
+
+      float R00 = 1.0f - 2.0f * (qy2 + qz2);
+      float R01 = 2.0f * (qx * qy - qw * qz);
+      float R02 = 2.0f * (qx * qz + qw * qy);
+
+      float R10 = 2.0f * (qx * qy + qw * qz);
+      float R11 = 1.0f - 2.0f * (qx2 + qz2);
+      float R12 = 2.0f * (qy * qz - qw * qx);
+
+      float R20 = 2.0f * (qx * qz - qw * qy);
+      float R21 = 2.0f * (qy * qz + qw * qx);
+      float R22 = 1.0f - 2.0f * (qx2 + qy2);
+
+      // Determine slanted optical axis distance D (meters)
+      float D = tof_distance_m;
+      if (D <= 0.05f) {
+          float min_r22 = 0.2f; // Prevent division by zero during steep roll/pitch
+          float effective_r22 = (R22 > min_r22) ? R22 : min_r22;
+          // Fallback: reconstructed optical slant distance using state estimate x[2] (pz) and lever arm
+          D = SENSOR_OFFSET_Z + (x[2] + R20 * SENSOR_OFFSET_X + R21 * SENSOR_OFFSET_Y) / effective_r22;
+      }
+      if (D < 0.10f) D = 0.10f; // Minimum safety floor (10 cm)
+
+      // 1. Gyro and Lever-Arm Derotation to isolate pure translational angular flow (rad/s)
+      float w_trans_x = flow_rad_s_x - wy + (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y) / D;
+      float w_trans_y = flow_rad_s_y + wx - (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X) / D;
+
+      // 2. Exact 2D linear system matrix inversion to recover Earth-Frame horizontal velocities (Vx, Vy)
+      float rhs_x = -D * w_trans_x - R20 * x[5];
+      float rhs_y = -D * w_trans_y - R21 * x[5];
+
+      float det_M = R00 * R11 - R01 * R10;
+      if (fabsf(det_M) < 1e-6f) return; 
+
+      float v_meas_earth_x = ( R11 * rhs_x - R10 * rhs_y) / det_M;
+      float v_meas_earth_y = (-R01 * rhs_x + R00 * rhs_y) / det_M;
+
+      // 3. 2D Extended Kalman Filter Measurement Update for Vx (x[3]) and Vy (x[4])
+      float y_innov[2];
+      y_innov[0] = v_meas_earth_x - x[3];
+      y_innov[1] = v_meas_earth_y - x[4];
+
+      float S[2][2];
+      S[0][0] = P[3][3] + R_flow;
+      S[0][1] = P[3][4];
+      S[1][0] = P[4][3];
+      S[1][1] = P[4][4] + R_flow;
+
+      float det = S[0][0] * S[1][1] - S[0][1] * S[1][0];
+      if (fabsf(det) < 1e-6f) return; 
+      
+      float S_inv[2][2];
+      S_inv[0][0] =  S[1][1] / det;
+      S_inv[0][1] = -S[0][1] / det;
+      S_inv[1][0] = -S[0][1] / det;
+      S_inv[1][1] =  S[0][0] / det;
+
+      float K[6][2];
+      for (int i = 0; i < 6; i++) {
+          K[i][0] = P[i][3] * S_inv[0][0] + P[i][4] * S_inv[1][0];
+          K[i][1] = P[i][3] * S_inv[0][1] + P[i][4] * S_inv[1][1];
+      }
+
+      for (int i = 0; i < 6; i++) {
+          x[i] += K[i][0] * y_innov[0] + K[i][1] * y_innov[1];
+      }
+
+      float P_new[6][6];
+      for (int i = 0; i < 6; i++) {
+          for (int j = 0; j < 6; j++) {
+              P_new[i][j] = P[i][j] - (K[i][0] * P[3][j] + K[i][1] * P[4][j]);
+          }
+      }
+      for (int i = 0; i < 6; i++) {
+          for (int j = 0; j < 6; j++) P[i][j] = P_new[i][j];
+      }
+  }
 };
 
 // AltitudeKalman kalman;
@@ -613,6 +622,10 @@ void loop() {
     mavlink_message_t msg;
     mavlink_status_t status;
 
+    // Declare optical flow rate variables (static so their values persist across serial reads)
+    static float flow_rad_s_x = 0.0f;
+    static float flow_rad_s_y = 0.0f;
+
     // Read all available data on Serial4 without blocking
     while (Serial4.available() > 0) {
       uint8_t c = Serial4.read();
@@ -626,22 +639,27 @@ void loop() {
 
         switch (msg.msgid) {
             
-          // 1. Parse Optical Flow Velocity & Quality (#100)
-          case MAVLINK_MSG_ID_OPTICAL_FLOW: {
-            mavlink_optical_flow_t flow;
-            mavlink_msg_optical_flow_decode(&msg, &flow);
+          // 1. Parse Optical Flow Angular Rates & Quality (#106)
+          case MAVLINK_MSG_ID_OPTICAL_FLOW_RAD: {
+            mavlink_optical_flow_rad_t flow;
+            mavlink_msg_optical_flow_rad_decode(&msg, &flow);
             
             flow_quality = flow.quality; // Flow confidence (0 - 255)
 
-            // Fallback logic: If float flow_comp_m_x is 0, read integer flow_x / flow_y
-            // mapping from sensor axes to NWU body axes: X+ --> Y-, Y+ --> X+
-            if (abs(flow.flow_comp_m_x) > 0.001f || abs(flow.flow_comp_m_y) > 0.001f) {
-                flow_vel_x_m_s = flow.flow_comp_m_y;
-                flow_vel_y_m_s = -flow.flow_comp_m_x;
+            // Convert integrated flow angles (rad) over integration time (us) to rates (rad/s)
+            // Mapping from sensor axes to NWU body axes: X+ --> Y-, Y+ --> X+
+            float dt = (float)flow.integration_time_us / 1000000.0f;
+            if (dt > 0.0001f) {
+                flow_rad_s_x = flow.integrated_y / dt;
+                flow_rad_s_y = -flow.integrated_x / dt;
             } else {
-                // Convert integer flow delta to velocity (scale factor of 1000.0f)
-                flow_vel_x_m_s = (float)flow.flow_y / 1000.0f; 
-                flow_vel_y_m_s = -(float)flow.flow_x / 1000.0f;
+                flow_rad_s_x = 0.0f;
+                flow_rad_s_y = 0.0f;
+            }
+
+            // Optional: Update distance if explicitly populated in message #106 (> 0m)
+            if (flow.distance > 0.0f) {
+                tof_distance_m = flow.distance;
             }
             break;
           }
@@ -663,10 +681,10 @@ void loop() {
       }
 
       kalman.updateAltitude(tof_distance_m, qw, qx, qy, qz);
-      kalman.updateFlow(flow_vel_x_m_s, flow_vel_y_m_s, 
-                    yaw_d_filtered, pitch_d_filtered, roll_d_filtered, 
-                    qw, qx, qy, qz, 
-                    tof_distance_m);
+      kalman.updateFlow(flow_rad_s_x, flow_rad_s_y, 
+                        wx, wy, wz, 
+                        qw, qx, qy, qz, 
+                        tof_distance_m);
 
     }
 
