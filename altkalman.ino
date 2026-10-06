@@ -132,8 +132,8 @@ public:
   float Q_v = 0.001f;  // Velocity process noise
 
   // --- MEASUREMENT NOISE VARIANCES (R) ---
-  float R_z    = 5.0f; // ToF Altitude measurement variance
-  float R_flow = 0.10f; // Optical Flow velocity measurement variance
+  float R_z    = 0.50f; // ToF Altitude measurement variance
+  float R_flow = 0.1f; // Optical Flow velocity measurement variance
 
   StateEstimator6D() {
     for (int i = 0; i < 6; i++) P[i][i] = 1.0f;
@@ -639,28 +639,36 @@ void loop() {
 
         switch (msg.msgid) {
             
-          // 1. Parse Optical Flow Angular Rates & Quality (#106)
-          case MAVLINK_MSG_ID_OPTICAL_FLOW_RAD: {
-            mavlink_optical_flow_rad_t flow;
-            mavlink_msg_optical_flow_rad_decode(&msg, &flow);
+          // 1. Parse Optical Flow Velocity & Quality (#100)
+          case MAVLINK_MSG_ID_OPTICAL_FLOW: {
+            mavlink_optical_flow_t flow;
+            mavlink_msg_optical_flow_decode(&msg, &flow);
             
             flow_quality = flow.quality; // Flow confidence (0 - 255)
 
-            // Convert integrated flow angles (rad) over integration time (us) to rates (rad/s)
-            // Mapping from sensor axes to NWU body axes: X+ --> Y-, Y+ --> X+
-            float dt = (float)flow.integration_time_us / 1000000.0f;
-            if (dt > 0.0001f) {
-                flow_rad_s_x = flow.integrated_y / dt;
-                flow_rad_s_y = -flow.integrated_x / dt;
+            // Fallback logic: If float flow_comp_m_x is 0, read integer flow_x / flow_y
+            // mapping from sensor axes to NWU body axes: X+ --> Y-, Y+ --> X+
+            if (abs(flow.flow_comp_m_x) > 0.001f || abs(flow.flow_comp_m_y) > 0.001f) {
+                flow_vel_x_m_s = flow.flow_comp_m_y;
+                flow_vel_y_m_s = flow.flow_comp_m_x;
+            } else {
+                // Convert integer flow delta to velocity (scale factor of 1000.0f)
+                flow_vel_x_m_s = (float)flow.flow_y / 1000.0f; 
+                flow_vel_y_m_s = (float)flow.flow_x / 1000.0f;
+            }
+            // Convert ground linear velocity (m/s) to angular flow rate (rad/s):
+            // omega_flow = v / D
+            if (tof_distance_m > 0.05f) {
+                flow_rad_s_x = flow_vel_x_m_s / tof_distance_m;
+                flow_rad_s_y = flow_vel_y_m_s / tof_distance_m;
             } else {
                 flow_rad_s_x = 0.0f;
                 flow_rad_s_y = 0.0f;
             }
-
-            // Optional: Update distance if explicitly populated in message #106 (> 0m)
-            if (flow.distance > 0.0f) {
-                tof_distance_m = flow.distance;
-            }
+            kalman.updateFlow(flow_rad_s_x, flow_rad_s_y, 
+                    wx, wy, wz, 
+                    qw, qx, qy, qz, 
+                    tof_distance_m);
             break;
           }
 
@@ -675,16 +683,14 @@ void loop() {
             // Extract ToF Signal Quality & Precision
             tof_strength  = dist.signal_quality; // Valid if MAVLink v2 packet
             tof_precision = dist.covariance;     // 0 if module does not transmit variance
+            kalman.updateAltitude(tof_distance_m, qw, qx, qy, qz);
             break;
           }
         }
       }
 
-      kalman.updateAltitude(tof_distance_m, qw, qx, qy, qz);
-      kalman.updateFlow(flow_rad_s_x, flow_rad_s_y, 
-                        wx, wy, wz, 
-                        qw, qx, qy, qz, 
-                        tof_distance_m);
+
+      
 
     }
 
@@ -848,9 +854,9 @@ void loop() {
         Serial.println(kalman.x[1], 4);       
 
         // MTF01P
-        // Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.2fm/s, VelY: %.2fm/s (Flow Qual: %d)\n",
-        //             tof_distance_m, tof_strength, tof_precision, 
-        //             flow_vel_x_m_s, flow_vel_y_m_s, flow_quality);
+        Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3frad/s, VelY: %.3frad/s (Flow Qual: %d)\n",
+                    tof_distance_m, tof_strength, tof_precision, 
+                    flow_rad_s_x, flow_rad_s_y, flow_quality);
 
       }
     }
