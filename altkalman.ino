@@ -47,7 +47,7 @@ const float KIN_C = 54.0f;
 // --- TVC PID TUNING & LIMITS ---
 float tvc_kp = 0.8f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.3f;      // Derivative gain
+float tvc_kd = 0.15f;      // Derivative gain
 float d_lpf_alpha = 0.03f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
@@ -478,6 +478,7 @@ void setup() {
   } else {
     myIMU.enableLinearAccelerometer(2); 
     myIMU.enableGameRotationVector(2); 
+    myIMU.enableGyro(2);
   }
 
   // 6. Let IMU Settle
@@ -527,6 +528,7 @@ void loop() {
   if (myIMU.hasReset()) {
     myIMU.enableLinearAccelerometer(2);
     myIMU.enableGameRotationVector(2);
+    myIMU.enableGyro(2);
   }
 
   // 1. Read BNO085 IMU 
@@ -548,7 +550,7 @@ void loop() {
     
     kalman.predict(accel_x, accel_y, accel_z, dt);
 
-    // 1. Fetch raw quaternion from BNO085
+    // 1. Fetch raw quaternions from BNO085
     float raw_qw = myIMU.getQuatReal();
     float raw_qx = myIMU.getQuatI();
     float raw_qy = myIMU.getQuatJ();
@@ -576,6 +578,11 @@ void loop() {
         qy /= norm;
         qz /= norm;
     }
+
+    // 5. Retrieve gyro rates from imu, NWU correction from board mount orientation applied
+    float wx = -myIMU.getGyroZ();
+    float wy = myIMU.getGyroY();
+    float wz = myIMU.getGyroX();
 
     // With the mounting correction applied, the quaternion (qw, qx, qy, qz)
     // now represents a sensor sitting perfectly flat. Z+ is the vertical axis.
