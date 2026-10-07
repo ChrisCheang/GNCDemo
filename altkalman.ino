@@ -129,11 +129,11 @@ public:
 
   // --- PROCESS NOISE VARIANCES (Q) ---
   float Q_p = 0.0001f; // Position process noise
-  float Q_v = 0.001f;  // Velocity process noise
+  float Q_v = 0.02f;  // Velocity process noise
 
   // --- MEASUREMENT NOISE VARIANCES (R) ---
   float R_z    = 0.50f; // ToF Altitude measurement variance
-  float R_flow = 0.30f; // Optical Flow velocity measurement variance
+  float R_flow = 0.05f; // Optical Flow velocity measurement variance
 
   StateEstimator6D() {
     for (int i = 0; i < 6; i++) P[i][i] = 1.0f;
@@ -142,16 +142,37 @@ public:
   // ---------------------------------------------------------
   // 1. PREDICT STEP (Using Earth-Frame Accelerations)
   // ---------------------------------------------------------
-  void predict(float ax, float ay, float az, float dt) {
+  void predict(float ax, float ay, float az, float dt, float qw, float qx, float qy, float qz) {
     float dt2 = dt * dt;
 
+    // Compute Body-to-Earth 3x3 Rotation Matrix R_BW from Quaternion
+    float qx2 = qx * qx, qy2 = qy * qy, qz2 = qz * qz;
+
+    float R00 = 1.0f - 2.0f * (qy2 + qz2);
+    float R01 = 2.0f * (qx * qy - qw * qz);
+    float R02 = 2.0f * (qx * qz + qw * qy);
+
+    float R10 = 2.0f * (qx * qy + qw * qz);
+    float R11 = 1.0f - 2.0f * (qx2 + qz2);
+    float R12 = 2.0f * (qy * qz - qw * qx);
+
+    float R20 = 2.0f * (qx * qz - qw * qy);
+    float R21 = 2.0f * (qy * qz + qw * qx);
+    float R22 = 1.0f - 2.0f * (qx2 + qy2);
+
+    // Rotate body-frame accelerations [ax, ay, az] into Earth-fixed NWU frame
+    float ax_e = R00 * ax + R01 * ay + R02 * az;
+    float ay_e = R10 * ax + R11 * ay + R12 * az;
+    float az_e = R20 * ax + R21 * ay + R22 * az;
+
+    // State Prediction using Earth-Frame Accelerations
     float x_pred[6];
-    x_pred[0] = x[0] + x[3] * dt + 0.5f * ax * dt2;
-    x_pred[1] = x[1] + x[4] * dt + 0.5f * ay * dt2;
-    x_pred[2] = x[2] + x[5] * dt + 0.5f * az * dt2;
-    x_pred[3] = x[3] + ax * dt;
-    x_pred[4] = x[4] + ay * dt;
-    x_pred[5] = x[5] + az * dt;
+    x_pred[0] = x[0] + x[3] * dt + 0.5f * ax_e * dt2;
+    x_pred[1] = x[1] + x[4] * dt + 0.5f * ay_e * dt2;
+    x_pred[2] = x[2] + x[5] * dt + 0.5f * az_e * dt2;
+    x_pred[3] = x[3] + ax_e * dt;
+    x_pred[4] = x[4] + ay_e * dt;
+    x_pred[5] = x[5] + az_e * dt;
 
     float F[6][6] = {0.0f};
     for (int i = 0; i < 6; i++) F[i][i] = 1.0f;
@@ -260,8 +281,8 @@ public:
       // float w_trans_x = flow_rad_s_x - wy + (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y) / D;
       // float w_trans_y = flow_rad_s_y + wx - (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X) / D;
 
-      float v_trans_x = flow_vel_x_m_s - wy*D - (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y);
-      float v_trans_y = flow_vel_y_m_s + wx*D + (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X);
+      float v_trans_x = flow_vel_x_m_s;// - wy*D + (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y);
+      float v_trans_y = flow_vel_y_m_s;// + wx*D - (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X);
 
       // 2. Exact 2D linear system matrix inversion to recover Earth-Frame horizontal velocities (Vx, Vy)
       float rhs_x = -v_trans_x - R20 * x[5];
@@ -275,8 +296,8 @@ public:
 
       // 3. 2D Extended Kalman Filter Measurement Update for Vx (x[3]) and Vy (x[4])
       float y_innov[2];
-      y_innov[0] = v_meas_earth_x - x[3];
-      y_innov[1] = v_meas_earth_y - x[4];
+      y_innov[0] = 3*v_meas_earth_x - x[3]; // 3 is artifical scaling factor (temporary)
+      y_innov[1] = 3*v_meas_earth_y - x[4]; // 3 is artifical scaling factor (temporary)
 
       float S[2][2];
       S[0][0] = P[3][3] + R_flow;
@@ -559,8 +580,6 @@ void loop() {
 
     imu_vel += accel_z * dt;
     imu_alt += imu_vel * dt + 0.5f * accel_z * dt * dt;
-    
-    kalman.predict(accel_x, accel_y, accel_z, dt);
 
     // 1. Fetch raw quaternions from BNO085
     float raw_qw = myIMU.getQuatReal();
@@ -590,6 +609,8 @@ void loop() {
         qy /= norm;
         qz /= norm;
     }
+
+    kalman.predict(accel_x, accel_y, accel_z, dt, qw, qx, qy, qz);
 
     // 5. Retrieve gyro rates from imu, NWU correction from board mount orientation applied
     float wx = -myIMU.getGyroZ();
@@ -668,7 +689,7 @@ void loop() {
             //     flow_rad_s_x = 0.0f;
             //     flow_rad_s_y = 0.0f;
             // }
-            kalman.updateFlow(flow_rad_s_x, flow_rad_s_y, 
+            kalman.updateFlow(flow_vel_x_m_s, flow_vel_y_m_s, 
                     wx, wy, wz, 
                     qw, qx, qy, qz, 
                     tof_distance_m);
