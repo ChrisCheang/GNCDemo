@@ -133,7 +133,7 @@ public:
 
   // --- MEASUREMENT NOISE VARIANCES (R) ---
   float R_z    = 0.50f; // ToF Altitude measurement variance
-  float R_flow = 0.1f; // Optical Flow velocity measurement variance
+  float R_flow = 0.30f; // Optical Flow velocity measurement variance
 
   StateEstimator6D() {
     for (int i = 0; i < 6; i++) P[i][i] = 1.0f;
@@ -184,7 +184,7 @@ public:
   // ---------------------------------------------------------
   void updateAltitude(float tof_distance_m, float qw, float qx, float qy, float qz) {
     // Unit Safety: convert cm to meters if sensor outputs raw cm values (> 50m ceiling check)
-    if (tof_distance_m > 50.0f) {
+    if (tof_distance_m > 15.0f) {
       tof_distance_m /= 100.0f;
     }
 
@@ -227,7 +227,7 @@ public:
                   float tof_distance_m = -1.0f) {
       
       // Unit Safety: convert cm to meters if sensor outputs raw cm values (> 50m ceiling check)
-      if (tof_distance_m > 50.0f) {
+      if (tof_distance_m > 15.0f) {
           tof_distance_m /= 100.0f;
       }
 
@@ -257,12 +257,15 @@ public:
       if (D < 0.10f) D = 0.10f; // Minimum safety floor (10 cm)
 
       // 1. Gyro and Lever-Arm Derotation to isolate pure translational angular flow (rad/s)
-      float w_trans_x = flow_rad_s_x - wy + (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y) / D;
-      float w_trans_y = flow_rad_s_y + wx - (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X) / D;
+      // float w_trans_x = flow_rad_s_x - wy + (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y) / D;
+      // float w_trans_y = flow_rad_s_y + wx - (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X) / D;
+
+      float v_trans_x = flow_vel_x_m_s - wy*D - (wy * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_Y);
+      float v_trans_y = flow_vel_y_m_s + wx*D + (wx * SENSOR_OFFSET_Z - wz * SENSOR_OFFSET_X);
 
       // 2. Exact 2D linear system matrix inversion to recover Earth-Frame horizontal velocities (Vx, Vy)
-      float rhs_x = -D * w_trans_x - R20 * x[5];
-      float rhs_y = -D * w_trans_y - R21 * x[5];
+      float rhs_x = -v_trans_x - R20 * x[5];
+      float rhs_y = -v_trans_y - R21 * x[5];
 
       float det_M = R00 * R11 - R01 * R10;
       if (fabsf(det_M) < 1e-6f) return; 
@@ -658,13 +661,13 @@ void loop() {
             }
             // Convert ground linear velocity (m/s) to angular flow rate (rad/s):
             // omega_flow = v / D
-            if (tof_distance_m > 0.05f) {
-                flow_rad_s_x = flow_vel_x_m_s / tof_distance_m;
-                flow_rad_s_y = flow_vel_y_m_s / tof_distance_m;
-            } else {
-                flow_rad_s_x = 0.0f;
-                flow_rad_s_y = 0.0f;
-            }
+            // if (tof_distance_m > 0.05f) {
+            //     flow_rad_s_x = flow_vel_x_m_s / tof_distance_m;
+            //     flow_rad_s_y = flow_vel_y_m_s / tof_distance_m;
+            // } else {
+            //     flow_rad_s_x = 0.0f;
+            //     flow_rad_s_y = 0.0f;
+            // }
             kalman.updateFlow(flow_rad_s_x, flow_rad_s_y, 
                     wx, wy, wz, 
                     qw, qx, qy, qz, 
@@ -851,12 +854,17 @@ void loop() {
 
         // X and Y positions in earth fixed NWU frame (aligns with body frame at startup)
         Serial.print(kalman.x[0], 4);       Serial.print(",");
-        Serial.println(kalman.x[1], 4);       
+        Serial.println(kalman.x[1], 4);
+
+        // // wx wy wz, verified to output data
+        // Serial.print(wx);       Serial.print(",");
+        // Serial.print(wy);       Serial.print(",");   
+        // Serial.println(wz);       
 
         // MTF01P
-        Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3frad/s, VelY: %.3frad/s (Flow Qual: %d)\n",
+        Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
                     tof_distance_m, tof_strength, tof_precision, 
-                    flow_rad_s_x, flow_rad_s_y, flow_quality);
+                    flow_vel_x_m_s, flow_vel_y_m_s, flow_quality);
 
       }
     }
