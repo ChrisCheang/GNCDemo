@@ -116,6 +116,18 @@ uint8_t tof_precision = 0;    // Measurement covariance/precision (if populated 
 unsigned long last_flow_ms = 0;
 unsigned long last_tof_ms = 0;
 
+float R00 = 1.0f;
+float R01 = 0.0f;
+float R02 = 0.0f;
+float R10 = 0.0f;
+float R11 = 1.0f;
+float R12 = 0.0f;
+float R20 = 0.0f;
+float R21 = 0.0f;
+float R22 = 1.0f;
+float delta_p_x = 0.0f;
+float delta_p_y = 0.0f;
+
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
 
@@ -824,6 +836,14 @@ void loop() {
 
       escTop.writeMicroseconds(escTop_us);
       escBot.writeMicroseconds(escBot_us);
+
+      // Ground intersection point of the tilted optical axis relative to CoM:
+      float p_x_tilted = R00 * SENSOR_OFFSET_X + R01 * SENSOR_OFFSET_Y + R02 * (SENSOR_OFFSET_Z - tof_distance_m);
+      float p_y_tilted = R10 * SENSOR_OFFSET_X + R11 * SENSOR_OFFSET_Y + R12 * (SENSOR_OFFSET_Z - tof_distance_m);
+
+      // Attitude-induced position shift relative to zero-tilt level attitude
+      float delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
+      float delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
     }
 
     // 2. Read DPS310 Barometer
@@ -875,7 +895,10 @@ void loop() {
 
         // X and Y positions in earth fixed NWU frame (aligns with body frame at startup)
         Serial.print(kalman.x[0], 4);       Serial.print(",");
-        Serial.println(kalman.x[1], 4);
+        Serial.print(kalman.x[1], 4);       Serial.print(",");
+
+        Serial.print(delta_p_x, 4);     Serial.print(",");
+        Serial.println(delta_p_y, 4);
 
         // // wx wy wz, verified to output data
         // Serial.print(wx);       Serial.print(",");
