@@ -35,6 +35,9 @@ const float SENSOR_OFFSET_X =  0.13f; // 13cm forward of CoM
 const float SENSOR_OFFSET_Y =  0.15f; // 15cm left of CoM
 const float SENSOR_OFFSET_Z = -0.40f; // 40cm below CoM (Z is UP in NWU, so below is negative)
 
+// If the height of the CoM changes, remember to update below
+float CoM_height = 0.62f;
+
 // --- TVC KINEMATIC CONSTANTS (Ported from kinematics.py) ---
 const float KIN_A = 12.0f;
 const float KIN_B = 20.0f;
@@ -154,7 +157,7 @@ public:
 
   // --- MEASUREMENT NOISE VARIANCES (R) ---
   float R_z    = 0.50f; // ToF Altitude measurement variance
-  float R_flow = 0.05f; // Optical Flow velocity measurement variance
+  float R_flow = 0.2f; // Optical Flow velocity measurement variance
 
   StateEstimator6D() {
     for (int i = 0; i < 6; i++) P[i][i] = 1.0f;
@@ -763,24 +766,24 @@ void loop() {
       R11 = 1.0f - 2.0f * (qx2 + qz2);
       R12 = 2.0f * (qy * qz - qw * qx);
 
-      // // Check ESC command threshold to detect initial launch
-      // bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
-      // if (throttle_active) {
-      //   has_taken_off = true; // Permanently latch takeoff state
-      // }
+      // Check ESC command threshold to detect initial launch
+      bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
+      if (kalman.x[2] > CoM_height + 0.02) {
+        has_taken_off = true; // Permanently latch takeoff state
+      }
 
-      // // Pre-flight clamp: ONLY runs prior to the very first takeoff
-      // if (!has_taken_off) {
-      //   // 1. Hold Kalman planar position and velocity states at zero while on launchpad
-      //   kalman.x[0] = 0.0f; // px
-      //   kalman.x[1] = 0.0f; // py
-      //   kalman.x[3] = 0.0f; // vx
-      //   kalman.x[4] = 0.0f; // vy
+      // Pre-flight clamp: ONLY runs prior to the very first takeoff
+      if (!has_taken_off) {
+        // 1. Hold Kalman planar position and velocity states at zero while on launchpad
+        kalman.x[0] = 0.0f; // px
+        kalman.x[1] = 0.0f; // py
+        kalman.x[3] = 0.0f; // vx
+        kalman.x[4] = 0.0f; // vy
 
-      //   // 2. Latch resting ground tilt offset as baseline bias
-      //   px_bias = -delta_p_x;
-      //   py_bias = -delta_p_y;
-      // }
+        // 2. Latch resting ground tilt offset as baseline bias
+        px_bias = -delta_p_x;
+        py_bias = -delta_p_y;
+      }
 
       // 1. Calculate Altitude Error
       float current_alt = kalman.x[2];
@@ -940,9 +943,11 @@ void loop() {
         Serial.print(px_c, 4);       Serial.print(",");
         Serial.print(py_c, 4);       Serial.print(",");
 
-        Serial.print(delta_p_x, 4);     Serial.print(",");
-        Serial.println(delta_p_y, 4);
+        Serial.print(px_bias, 4);     Serial.print(",");
+        Serial.println(py_bias, 4);
 
+        // Serial.print(",");
+        // Serial.println(has_taken_off);
         // // wx wy wz, verified to output data
         // Serial.print(wx);       Serial.print(",");
         // Serial.print(wy);       Serial.print(",");   
