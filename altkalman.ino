@@ -128,6 +128,15 @@ float R22 = 1.0f;
 float delta_p_x = 0.0f;
 float delta_p_y = 0.0f;
 
+// post-kalman px py (use these instead of kalman.x[0] and kalman.x[1])
+float px_c = 0.0f;
+float py_c = 0.0f; 
+
+// --- Global Origin & Latch State Variables ---
+bool has_taken_off = false;
+float px_bias = 0.0f;
+float py_bias = 0.0f;
+
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
 
@@ -743,6 +752,36 @@ void loop() {
     }
 
     if (dt > 0.0001f) {
+      // 1. Compute current Body-to-Earth Rotation Matrix components from active quaternions
+      float qx2 = qx * qx, qy2 = qy * qy, qz2 = qz * qz;
+
+      R00 = 1.0f - 2.0f * (qy2 + qz2);
+      R01 = 2.0f * (qx * qy - qw * qz);
+      R02 = 2.0f * (qx * qz + qw * qy);
+
+      R10 = 2.0f * (qx * qy + qw * qz);
+      R11 = 1.0f - 2.0f * (qx2 + qz2);
+      R12 = 2.0f * (qy * qz - qw * qx);
+
+      // // Check ESC command threshold to detect initial launch
+      // bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
+      // if (throttle_active) {
+      //   has_taken_off = true; // Permanently latch takeoff state
+      // }
+
+      // // Pre-flight clamp: ONLY runs prior to the very first takeoff
+      // if (!has_taken_off) {
+      //   // 1. Hold Kalman planar position and velocity states at zero while on launchpad
+      //   kalman.x[0] = 0.0f; // px
+      //   kalman.x[1] = 0.0f; // py
+      //   kalman.x[3] = 0.0f; // vx
+      //   kalman.x[4] = 0.0f; // vy
+
+      //   // 2. Latch resting ground tilt offset as baseline bias
+      //   px_bias = -delta_p_x;
+      //   py_bias = -delta_p_y;
+      // }
+
       // 1. Calculate Altitude Error
       float current_alt = kalman.x[2];
       float alt_error = target_altitude - current_alt;
@@ -842,8 +881,12 @@ void loop() {
       float p_y_tilted = R10 * SENSOR_OFFSET_X + R11 * SENSOR_OFFSET_Y + R12 * (SENSOR_OFFSET_Z - tof_distance_m);
 
       // Attitude-induced position shift relative to zero-tilt level attitude
-      float delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
-      float delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
+      delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
+      delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
+
+      px_c = kalman.x[0] - delta_p_x - px_bias;
+      py_c = kalman.x[1] - delta_p_y - py_bias;
+
     }
 
     // 2. Read DPS310 Barometer
@@ -894,8 +937,8 @@ void loop() {
         Serial.print(yawServo.readMicroseconds());     Serial.print(",");
 
         // X and Y positions in earth fixed NWU frame (aligns with body frame at startup)
-        Serial.print(kalman.x[0], 4);       Serial.print(",");
-        Serial.print(kalman.x[1], 4);       Serial.print(",");
+        Serial.print(px_c, 4);       Serial.print(",");
+        Serial.print(py_c, 4);       Serial.print(",");
 
         Serial.print(delta_p_x, 4);     Serial.print(",");
         Serial.println(delta_p_y, 4);
