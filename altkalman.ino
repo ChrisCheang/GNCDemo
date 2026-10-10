@@ -28,6 +28,11 @@ Servo yawServo;
 Servo escTop;
 Servo escBot;
 
+// --- MISSION TIMER & ALTITUDE PROFILE ---
+unsigned long loop_start_micros = 0;
+bool loop_timer_started = false;
+float t = 0.0f; // Time in seconds to microsecond precision
+
 // --- MTF-01P Sensor Offset from Center of Mass (CoM) ---
 // Defined in the Body-Fixed NWU Frame (North/Forward=X, West/Left=Y, Up=Z).
 // A sensor mounted forward, left, and below the CoM:
@@ -50,7 +55,7 @@ const float KIN_C = 54.0f;
 // --- OUTER POSITION PID TUNING & TARGETS ---
 float pos_kp = 0.3f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
-float pos_kd = 0.1f;        // Position derivative gain
+float pos_kd = 0.2f;        // Position derivative gain
 
 float target_px = 0.0f;     // Earth-fixed X target position (m)
 float target_py = 0.0f;     // Earth-fixed Y target position (m)
@@ -70,7 +75,7 @@ float prev_yaw_err = 0.0f;
 float tvc_kp = 0.7f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
 float tvc_kd = 0.1f;      // Derivative gain
-float d_lpf_alpha = 0.03f;  // Low pass filter factor for derivative (0.0 to 1.0)
+float d_lpf_alpha = 0.02f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
 int servo_limit_us = 333;   // Max deflection from center (~30 deg = 333us)
@@ -113,9 +118,6 @@ float alt_ki = 150.0f;
 float alt_kd = 250.0f;
 
 bool calibrate_esc = false; // Set to true before uploading if you need to recalibrate the ESCs
-bool altitude_lock = false; // forces landing when altitude exceeds a threshold for initial testing
-bool altitude_locked = false;
-unsigned long lock_start_ms = 0;
 
 
 float alt_integral = 0.0f;
@@ -614,6 +616,34 @@ void loop() {
     myIMU.enableGyro(2);
   }
 
+  // 1. Initialize microsecond-precision timer on the first loop iteration
+  if (!loop_timer_started) {
+    loop_start_micros = micros();
+    loop_timer_started = true;
+  }
+  t = (micros() - loop_start_micros) * 1e-6f;
+
+  // 2. Map target_altitude to time profile h(t)
+  if (t < 2.0f) {
+    target_altitude = CoM_height;
+  } 
+  else if (t < 4.0f) {
+    // Increases linearly from CoM_height to CoM_height + 0.5 over 2 seconds (t from 2 to 4)
+    target_altitude = CoM_height + 0.5f * ((t - 2.0f) / 2.0f);
+  } 
+  else if (t < 5.0f) {
+    // Holds for one second (t from 4 to 5) at CoM_height + 0.5
+    target_altitude = CoM_height + 0.5f;
+  } 
+  else if (t <= 7.0f) {
+    // Decreases linearly back to CoM_height over another 2 seconds (t from 5 to 7)
+    target_altitude = (CoM_height + 0.5f) - 0.5f * ((t - 5.0f) / 2.0f);
+  } 
+  else {
+    // Hold at CoM_height after profile completion
+    target_altitude = CoM_height;
+  }
+
   // 1. Read BNO085 IMU 
   if (myIMU.dataAvailable() == true) {
     unsigned long now_micros = micros();
@@ -913,6 +943,12 @@ void loop() {
       int pitch_us = servo_center_us + (int)(servo_phi_deg * 11.111f);
       int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
 
+      // Stop/center servo commands if altitude is below CoM_height + 0.03m
+      if (kalman.x[2] < (CoM_height + 0.05f)) {
+        pitch_us = servo_center_us;
+        yaw_us = servo_center_us;
+      }
+
       pitchServo.writeMicroseconds(pitch_us);
       yawServo.writeMicroseconds(yaw_us);
 
@@ -942,21 +978,6 @@ void loop() {
       escTop_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
       escBot_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
 
-      if (kalman.x[2] > target_altitude && !altitude_locked) {
-        altitude_locked = true;
-        lock_start_ms = millis();
-      }
-
-      if (altitude_locked) {
-        if (millis() - lock_start_ms >= 500) {
-          escTop_us = 1000;
-          escBot_us = 1000;
-        } else {
-          escTop_us = 1600;
-          escBot_us = 1600;
-        }
-      }
-
       escTop.writeMicroseconds(escTop_us);
       escBot.writeMicroseconds(escBot_us);
 
@@ -982,6 +1003,8 @@ void loop() {
       // Only attempt to transmit if buffer is clear
       if (Serial && Serial.availableForWrite() >= 128) {
         // --- TELEMETRY SERIAL PRINT (CSV FORMAT) ---
+        Serial.print(t);                Serial.print(",");
+
         // Quaternions (w, x, y, z, NWU body fixed frame)
         Serial.print(qw);                Serial.print(",");
         Serial.print(qx);                Serial.print(",");
