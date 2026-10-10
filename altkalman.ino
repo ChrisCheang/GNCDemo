@@ -33,10 +33,10 @@ Servo escBot;
 // A sensor mounted forward, left, and below the CoM:
 const float SENSOR_OFFSET_X =  0.13f; // 13cm forward of CoM
 const float SENSOR_OFFSET_Y =  0.15f; // 15cm left of CoM
-const float SENSOR_OFFSET_Z = -0.40f; // 40cm below CoM (Z is UP in NWU, so below is negative)
+const float SENSOR_OFFSET_Z = -0.36f; // 40cm below CoM (Z is UP in NWU, so below is negative)
 
 // If the height of the CoM changes, remember to update below
-float CoM_height = 0.62f;
+float CoM_height = 0.57f;
 
 // --- TVC KINEMATIC CONSTANTS (Ported from kinematics.py) ---
 const float KIN_A = 12.0f;
@@ -47,10 +47,29 @@ const float KIN_H = 43.5f;
 // Pre-calculated linkage lengths based on offset_angle = 0
 const float KIN_C = 54.0f;   
 
+// --- OUTER POSITION PID TUNING & TARGETS ---
+float pos_kp = 0.3f;        // Position proportional gain
+float pos_ki = 0.0f;       // Position integral gain
+float pos_kd = 0.1f;        // Position derivative gain
+
+float target_px = 0.0f;     // Earth-fixed X target position (m)
+float target_py = 0.0f;     // Earth-fixed Y target position (m)
+
+float pos_x_integral = 0.0f;
+float pos_y_integral = 0.0f;
+
+float prev_px_c = 0.0f;
+float prev_py_c = 0.0f;
+float vx_c_filtered = 0.0f;
+float vy_c_filtered = 0.0f;
+
+float prev_pitch_err = 0.0f;
+float prev_yaw_err = 0.0f;
+
 // --- TVC PID TUNING & LIMITS ---
-float tvc_kp = 0.8f;       // Proportional gain
+float tvc_kp = 0.7f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.15f;      // Derivative gain
+float tvc_kd = 0.1f;      // Derivative gain
 float d_lpf_alpha = 0.03f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
@@ -76,6 +95,11 @@ float roll_kd = 0.2f;
 float roll_integral = 0.0f;
 float prev_roll_deg = 0.0f;
 float roll_d_filtered = 0.0f;
+
+float ax_cmd = 0.0f;
+float ay_cmd = 0.0f;
+float target_pitch_deg = 0.0f;
+float target_yaw_deg = 0.0f;
 
 // Initial orientation quaternions for gimbal-lock-free roll 
 float qw_init = 1.0f;
@@ -134,6 +158,8 @@ float delta_p_y = 0.0f;
 // post-kalman px py (use these instead of kalman.x[0] and kalman.x[1])
 float px_c = 0.0f;
 float py_c = 0.0f; 
+float pos_lpf_alpha = 0.03f;   // Adjustable LPF alpha for px_c and py_c
+
 
 // --- Global Origin & Latch State Variables ---
 bool has_taken_off = false;
@@ -768,7 +794,7 @@ void loop() {
 
       // Check ESC command threshold to detect initial launch
       bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
-      if (kalman.x[2] > CoM_height + 0.02) {
+      if (kalman.x[2] > CoM_height + 0.03) {
         has_taken_off = true; // Permanently latch takeoff state
       }
 
@@ -785,88 +811,143 @@ void loop() {
         py_bias = -delta_p_y;
       }
 
-      // 1. Calculate Altitude Error
-      float current_alt = kalman.x[2];
-      float alt_error = target_altitude - current_alt;
+      // Ground intersection point of the tilted optical axis relative to CoM:
+      float p_x_tilted = R00 * SENSOR_OFFSET_X + R01 * SENSOR_OFFSET_Y + R02 * (SENSOR_OFFSET_Z - tof_distance_m);
+      float p_y_tilted = R10 * SENSOR_OFFSET_X + R11 * SENSOR_OFFSET_Y + R12 * (SENSOR_OFFSET_Z - tof_distance_m);
 
-      // 2. Integral Terms with anti-windup clamping
-      pitch_integral += pitch_deg * dt;
-      yaw_integral += yaw_deg * dt;
-      roll_integral += roll_deg * dt;
-      alt_integral += alt_error * dt;
-      
+      // Attitude-induced position shift relative to zero-tilt level attitude
+      delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
+      delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
+
+      px_c = kalman.x[0] - delta_p_x - px_bias;
+      py_c = kalman.x[1] - delta_p_y - py_bias;
+
+      // 2. Corrected Earth-fixed Position States with Direct In-Place LPF
+      float raw_px_c = kalman.x[0] - delta_p_x - px_bias;
+      float raw_py_c = kalman.x[1] - delta_p_y - py_bias;
+
+      px_c += pos_lpf_alpha * (raw_px_c - px_c);
+      py_c += pos_lpf_alpha * (raw_py_c - py_c);
+
+      // 3. Numerical Derivative of px_c and py_c (avoiding kalman.x[3] / x[4])
+      float vx_c_raw = (px_c - prev_px_c) / dt;
+      float vy_c_raw = (py_c - prev_py_c) / dt;
+      prev_px_c = px_c;
+      prev_py_c = py_c;
+
+      vx_c_filtered += d_lpf_alpha * (vx_c_raw - vx_c_filtered);
+      vy_c_filtered += d_lpf_alpha * (vy_c_raw - vy_c_filtered);
+
+      // 4. Outer Position PID Control Loops (Earth NWU Frame)
+      float err_px = target_px - px_c;
+      float err_py = target_py - py_c;
+
+      if (has_taken_off) {
+        pos_x_integral += err_px * dt;
+        pos_y_integral += err_py * dt;
+        pos_x_integral = constrain(pos_x_integral, -3.0f, 3.0f);
+        pos_y_integral = constrain(pos_y_integral, -3.0f, 3.0f);
+      } else {
+        pos_x_integral = 0.0f;
+        pos_y_integral = 0.0f;
+      }
+
+      ax_cmd = (pos_kp * err_px) + (pos_ki * pos_x_integral) - (pos_kd * vx_c_filtered);
+      ay_cmd = (pos_kp * err_py) + (pos_ki * pos_y_integral) - (pos_kd * vy_c_filtered);
+
+      // 5. Form Target Vehicle Attitude Vector in Earth NWU Frame
+      const float g = 9.81f;
+      float t_e_x = ax_cmd;
+      float t_e_y = ay_cmd;
+      float t_e_z = g;
+
+      float norm_t_e = sqrtf(t_e_x * t_e_x + t_e_y * t_e_y + t_e_z * t_e_z);
+      if (norm_t_e > 0.0f) {
+        t_e_x /= norm_t_e;
+        t_e_y /= norm_t_e;
+        t_e_z /= norm_t_e;
+      }
+
+      // 6. Rotate Target Thrust Vector into Body-Fixed Frame via R_BW^T
+      float t_b_x = R00 * t_e_x + R10 * t_e_y + R20 * t_e_z;
+      float t_b_y = R01 * t_e_x + R11 * t_e_y + R21 * t_e_z;
+      float t_b_z = R02 * t_e_x + R12 * t_e_y + R22 * t_e_z;
+
+      // 7. Calculate Body-Fixed Target Attitude Angles (degrees)
+      target_pitch_deg = atan2f(t_b_x, t_b_z) * (180.0f / PI);
+      target_yaw_deg   = - atan2f(t_b_y, t_b_z) * (180.0f / PI);
+
+      // 8. Inner Attitude Loop Error & Derivative Terms
+      float pitch_err = target_pitch_deg - pitch_deg;
+      float yaw_err   = target_yaw_deg - yaw_deg;
+
+      pitch_integral += pitch_err * dt;
+      yaw_integral   += yaw_err * dt;
       pitch_integral = constrain(pitch_integral, -15.0f, 15.0f);
-      yaw_integral = constrain(yaw_integral, -15.0f, 15.0f);
-      roll_integral = constrain(roll_integral, -15.0f, 15.0f);
-      alt_integral = constrain(alt_integral, -100.0f, 100.0f); // Anti-windup clamping for altitude
+      yaw_integral   = constrain(yaw_integral, -15.0f, 15.0f);
 
-      // 3. Raw Numerical Derivatives
-      float pitch_d_raw = (pitch_deg - prev_pitch_deg) / dt;
-      float yaw_d_raw   = (yaw_deg - prev_yaw_deg) / dt;
-      float roll_d_raw  = (roll_deg - prev_roll_deg) / dt;
-      float alt_d_raw   = (alt_error - prev_alt_error) / dt;
+      float pitch_d_raw = (pitch_err - prev_pitch_err) / dt;
+      float yaw_d_raw   = (yaw_err - prev_yaw_err) / dt;
+      prev_pitch_err = pitch_err;
+      prev_yaw_err   = yaw_err;
 
-      prev_pitch_deg = pitch_deg;
-      prev_yaw_deg = yaw_deg;
-      prev_roll_deg = roll_deg;
-      prev_alt_error = alt_error;
+      pitch_d_filtered += d_lpf_alpha * (pitch_d_raw - pitch_d_filtered);
+      yaw_d_filtered   += d_lpf_alpha * (yaw_d_raw - yaw_d_filtered);
 
-      // 4. Low Pass Filter applied to Derivatives
-      pitch_d_filtered = pitch_d_filtered + d_lpf_alpha * (pitch_d_raw - pitch_d_filtered);
-      yaw_d_filtered   = yaw_d_filtered + d_lpf_alpha * (yaw_d_raw - yaw_d_filtered);
-      roll_d_filtered  = roll_d_filtered + d_lpf_alpha * (roll_d_raw - roll_d_filtered);
-      alt_d_filtered   = alt_d_filtered + d_lpf_alpha * (alt_d_raw - alt_d_filtered);
+      // 9. Inner TVC PID Commands
+      float pitch_output_deg = (tvc_kp * pitch_err) + (tvc_ki * pitch_integral) + (tvc_kd * pitch_d_filtered);
+      float yaw_output_deg   = (tvc_kp * yaw_err)   + (tvc_ki * yaw_integral)   + (tvc_kd * yaw_d_filtered);
 
-      // 5. PID Command Calculation
-      float pitch_output_deg = (tvc_kp * pitch_deg) + (tvc_ki * pitch_integral) + (tvc_kd * pitch_d_filtered);
-      float yaw_output_deg   = (tvc_kp * yaw_deg) + (tvc_ki * yaw_integral) + (tvc_kd * yaw_d_filtered);
-      float roll_output      = (roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered);
-      float alt_output       = (alt_kp * alt_error) + (alt_ki * alt_integral) + (alt_kd * alt_d_filtered);
-
-      // Clamp before IK
       float max_gimbal_deg = 20.0f;
       pitch_output_deg = constrain(pitch_output_deg, -max_gimbal_deg, max_gimbal_deg);
       yaw_output_deg   = constrain(yaw_output_deg, -max_gimbal_deg, max_gimbal_deg);
 
-      // 6. INVERSE KINEMATICS PIPELINE (Pitch & Yaw via TVC Servos)
+      // 10. Inverse Kinematics & Servo Actuation
       float desired_gimbal_pitch_rad = - pitch_output_deg * (PI / 180.0f);
       float desired_gimbal_yaw_rad   = yaw_output_deg * (PI / 180.0f);
-
 
       float servo_phi_deg = 0.0f;
       float servo_theta_deg = 0.0f;
       calculateInverseKinematics(desired_gimbal_pitch_rad, desired_gimbal_yaw_rad, servo_phi_deg, servo_theta_deg);
 
-      int pitch_us = servo_center_us - (int)(servo_phi_deg * 11.111f); // servo arrangement does not have rotational symmetry
-      int yaw_us   = servo_center_us + (int)(servo_theta_deg * 11.111f);
+      int pitch_us = servo_center_us + (int)(servo_phi_deg * 11.111f);
+      int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
 
       pitchServo.writeMicroseconds(pitch_us);
       yawServo.writeMicroseconds(yaw_us);
 
-      // 7. ALTITUDE & ROLL CONTROL PIPELINE (via Differential ESC RPM)
+      // 11. Altitude & Roll PID Pipeline (Differential ESC Throttle)
+      float current_alt = kalman.x[2];
+      float alt_error = target_altitude - current_alt;
+
+      roll_integral += roll_deg * dt;
+      alt_integral  += alt_error * dt;
+      roll_integral = constrain(roll_integral, -15.0f, 15.0f);
+      alt_integral  = constrain(alt_integral, -100.0f, 100.0f);
+
+      float roll_d_raw = (roll_deg - prev_roll_deg) / dt;
+      float alt_d_raw  = (alt_error - prev_alt_error) / dt;
+      prev_roll_deg = roll_deg;
+      prev_alt_error = alt_error;
+
+      roll_d_filtered += d_lpf_alpha * (roll_d_raw - roll_d_filtered);
+      alt_d_filtered  += d_lpf_alpha * (alt_d_raw - alt_d_filtered);
+
+      float roll_output = (roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered);
+      float alt_output  = (alt_kp * alt_error) + (alt_ki * alt_integral)  + (alt_kd * alt_d_filtered);
+
       int base_throttle_us = hover_throttle_us + (int)alt_output;
-      
-      // Prevent base throttle from dropping below arming or going above max before roll modulation
       base_throttle_us = constrain(base_throttle_us, 1000, max_throttle_us);
 
-      // NOTE: Which PWM direction speeds up/slows down which rotor, and which rotor spins CW vs CCW 
-      // needs to be tested and verified in hardware. If the vehicle rolls in the wrong direction 
-      // during tests, swap the `+` and `-` signs below!
-      escTop_us = base_throttle_us + (int)roll_output;
-      escBot_us = base_throttle_us - (int)roll_output;
+      escTop_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
+      escBot_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
 
-      // Constrain ESC PWM strictly between arming (1000) and max throttle
-      escTop_us = constrain(escTop_us, 1000, max_throttle_us);
-      escBot_us = constrain(escBot_us, 1000, max_throttle_us);
-
-      // Altitude locking for initial testing
       if (kalman.x[2] > target_altitude && !altitude_locked) {
         altitude_locked = true;
-        lock_start_ms = millis(); // Record timestamp when lock triggers
+        lock_start_ms = millis();
       }
 
       if (altitude_locked) {
-        // Run ESCs at hover/descent throttle for 2 seconds (2000 ms), then shut off to 1000 us
         if (millis() - lock_start_ms >= 500) {
           escTop_us = 1000;
           escBot_us = 1000;
@@ -878,17 +959,6 @@ void loop() {
 
       escTop.writeMicroseconds(escTop_us);
       escBot.writeMicroseconds(escBot_us);
-
-      // Ground intersection point of the tilted optical axis relative to CoM:
-      float p_x_tilted = R00 * SENSOR_OFFSET_X + R01 * SENSOR_OFFSET_Y + R02 * (SENSOR_OFFSET_Z - tof_distance_m);
-      float p_y_tilted = R10 * SENSOR_OFFSET_X + R11 * SENSOR_OFFSET_Y + R12 * (SENSOR_OFFSET_Z - tof_distance_m);
-
-      // Attitude-induced position shift relative to zero-tilt level attitude
-      delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
-      delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
-
-      px_c = kalman.x[0] - delta_p_x - px_bias;
-      py_c = kalman.x[1] - delta_p_y - py_bias;
 
     }
 
@@ -943,8 +1013,12 @@ void loop() {
         Serial.print(px_c, 4);       Serial.print(",");
         Serial.print(py_c, 4);       Serial.print(",");
 
-        Serial.print(px_bias, 4);     Serial.print(",");
-        Serial.println(py_bias, 4);
+        //Serial.print(px_bias, 4);     Serial.print(",");
+        //Serial.println(py_bias, 4);     Serial.print(",");
+
+        Serial.print(target_pitch_deg, 4);       Serial.print(",");
+        Serial.print(target_yaw_deg, 4);       Serial.print(",");
+        Serial.println(target_altitude, 4);
 
         // Serial.print(",");
         // Serial.println(has_taken_off);
