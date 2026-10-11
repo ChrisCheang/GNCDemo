@@ -113,7 +113,7 @@ float qy_init = 0.0f;
 float qz_init = 0.0f;
 
 // --- ALTITUDE PID TUNING & LIMITS ---
-float alt_kp = 800.0f;
+float alt_kp = 820.0f;
 float alt_ki = 250.0f;
 float alt_kd = 100.0f;
 
@@ -165,6 +165,11 @@ float pos_lpf_alpha = 0.03f;   // Adjustable LPF alpha for px_c and py_c
 
 // --- Global Origin & Latch State Variables ---
 bool has_taken_off = false;
+
+// --- POST-FLIGHT LANDING ESC LOCK STATES ---
+bool has_reached_altitude_peak = false;
+bool post_flight_lock = false;
+
 float px_bias = 0.0f;
 float py_bias = 0.0f;
 
@@ -1011,6 +1016,22 @@ void loop() {
         escTop_us = 1000;
         escBot_us = 1000;
       } 
+
+      // Track if altitude has breached CoM + 0.05 after taking off
+      if (has_taken_off && kalman.x[2] > (CoM_height + 0.05f)) {
+        has_reached_altitude_peak = true;
+      }
+
+      // Trigger lock if altitude drops back below CoM + 0.05 after reaching the peak
+      if (has_reached_altitude_peak && kalman.x[2] < (CoM_height + 0.05f)) {
+        post_flight_lock = true;
+      }
+
+      // Force ESC outputs to 1000 µs if post-flight lock is active
+      if (post_flight_lock) {
+        escTop_us = 1000;
+        escBot_us = 1000;
+      }
 
       escTop.writeMicroseconds(escTop_us);
       escBot.writeMicroseconds(escBot_us);
