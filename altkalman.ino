@@ -53,9 +53,9 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- OUTER POSITION PID TUNING & TARGETS ---
-float pos_kp = 3.0f;        // Position proportional gain
+float pos_kp = 1.0f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
-float pos_kd = 1.5f;        // Position derivative gain
+float pos_kd = 0.6f;        // Position derivative gain
 
 float target_px = 0.0f;     // Earth-fixed X target position (m)
 float target_py = 0.0f;     // Earth-fixed Y target position (m)
@@ -72,9 +72,9 @@ float prev_pitch_err = 0.0f;
 float prev_yaw_err = 0.0f;
 
 // --- TVC PID TUNING & LIMITS ---
-float tvc_kp = 0.5f;       // Proportional gain
+float tvc_kp = 0.3f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.05f;      // Derivative gain
+float tvc_kd = 0.15f;      // Derivative gain
 float d_lpf_alpha = 0.02f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
@@ -93,9 +93,9 @@ float yaw_d_filtered = 0.0f;
 bool pid_first_run = true;
 
 // --- ROLL PID TUNING & LIMITS ---
-float roll_kp = 4.0f;
+float roll_kp = 1.0f;
 float roll_ki = 0.0f;
-float roll_kd = 0.8f;
+float roll_kd = 0.5f;
 
 float roll_integral = 0.0f;
 float prev_roll_deg = 0.0f;
@@ -113,9 +113,9 @@ float qy_init = 0.0f;
 float qz_init = 0.0f;
 
 // --- ALTITUDE PID TUNING & LIMITS ---
-float alt_kp = 750.0f;
-float alt_ki = 100.0f;
-float alt_kd = 200.0f;
+float alt_kp = 800.0f;
+float alt_ki = 250.0f;
+float alt_kd = 100.0f;
 
 bool calibrate_esc = false; // Set to true before uploading if you need to recalibrate the ESCs
 
@@ -125,8 +125,8 @@ float prev_alt_error = 0.0f;
 float alt_d_filtered = 0.0f;
 
 float target_altitude = 1.0f; // Target altitude in meters
-int hover_throttle_us = 1700; // Base throttle needed to maintain hover
-int max_throttle_us = 2000;   // Maximum throttle limit for safety during testing
+int hover_throttle_us = 1800; // Base throttle needed to maintain hover
+int max_throttle_us = 1960;   // Maximum throttle limit for safety during testing
 
 unsigned long last_telemetry_time = 0;
 const unsigned long TELEMETRY_INTERVAL_US = 20000; // 50 Hz (20 ms)
@@ -183,7 +183,7 @@ Adafruit_DPS310 dps;
 class StateEstimator6D {
 public:
   // State Vector: [px, py, pz, vx, vy, vz] in Earth-Fixed NWU Frame
-  float x[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+  float x[6] = {0.0f, 0.0f, CoM_height, 0.0f, 0.0f, 0.0f};
   
   // 6x6 Error Covariance Matrix
   float P[6][6] = {0.0f};
@@ -633,20 +633,20 @@ void loop() {
   t = (micros() - loop_start_micros) * 1e-6f;
 
   // 2. Map target_altitude to time profile h(t)
-  if (t < 2.0f) {
+  if (t < 1.0f) {
     target_altitude = CoM_height;
   } 
+  else if (t < 3.0f) {
+    // Increases linearly from CoM_height to CoM_height + 0.2 over 2 seconds (t from 1 to 3)
+    target_altitude = CoM_height + 0.2f * ((t - 1.0f) / 2.0f);
+  } 
   else if (t < 4.0f) {
-    // Increases linearly from CoM_height to CoM_height + 0.5 over 2 seconds (t from 2 to 4)
-    target_altitude = CoM_height + 0.3f * ((t - 2.0f) / 2.0f);
+    // Holds for one second (t from 3 to 4) at CoM_height + 0.5
+    target_altitude = CoM_height + 0.2f;
   } 
-  else if (t < 5.0f) {
-    // Holds for one second (t from 4 to 5) at CoM_height + 0.5
-    target_altitude = CoM_height + 0.3f;
-  } 
-  else if (t <= 7.0f) {
-    // Decreases linearly back to CoM_height over another 2 seconds (t from 5 to 7)
-    target_altitude = (CoM_height + 0.3f) - 0.3f * ((t - 5.0f) / 2.0f);
+  else if (t <= 6.0f) {
+    // Decreases linearly back to CoM_height over another 2 seconds (t from 4 to 6)
+    target_altitude = (CoM_height + 0.2f) - 0.2f * ((t - 4.0f) / 2.0f);
   } 
   else {
     // Hold at CoM_height after profile completion
@@ -967,7 +967,7 @@ void loop() {
       int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
 
       // Stop/center servo commands if altitude is below CoM_height + 0.03m
-      if (kalman.x[2] < (CoM_height + 0.025f)) {
+      if (kalman.x[2] < (CoM_height + 0.02f)) {
         pitch_us = servo_center_us;
         yaw_us = servo_center_us;
       }
@@ -998,16 +998,16 @@ void loop() {
       dt_esc_interval_us = now_us_esc - last_esc_micros;
       last_esc_micros = now_us_esc;
 
-      float roll_output = (roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered);
+      float roll_output = constrain((roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered),-100,100);
       float alt_output  = (alt_kp * alt_error) + (alt_ki * alt_integral)  + (alt_kd * alt_d_filtered);
 
       int base_throttle_us = hover_throttle_us + (int)alt_output;
       base_throttle_us = constrain(base_throttle_us, 1000, max_throttle_us);
 
-      escTop_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
-      escBot_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
+      escTop_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
+      escBot_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
 
-      if (t > 7.0f) {
+      if (t > 6.0f) {
         escTop_us = 1000;
         escBot_us = 1000;
       } 
