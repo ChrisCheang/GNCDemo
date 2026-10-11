@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 import numpy as np
 from PyQt5 import QtWidgets, QtCore
@@ -141,12 +142,40 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         main_layout.addLayout(right_layout, stretch=1)
 
     def load_csv_file(self, filepath):
-        """Loads and parses static CSV telemetry log files with headers."""
+        """Loads, prompts for time trimming in terminal, and parses static CSV telemetry log files with headers."""
         try:
             df = pd.read_csv(filepath, header=0)
-            self.data_df = df.apply(pd.to_numeric, errors='coerce').dropna()
+            df = df.apply(pd.to_numeric, errors='coerce').dropna()
+            
+            if not df.empty and 't' in df.columns:
+                t_min = df['t'].min()
+                t_max = df['t'].max()
+                print(f"\n[INFO] Loaded CSV with available time range: {t_min:.2f}s to {t_max:.2f}s")
+                
+                try:
+                    start_input = input(f"Enter start time [s] (default {t_min:.2f}): ").strip()
+                    start_t = float(start_input) if start_input else t_min
+                except ValueError:
+                    start_t = t_min
+                    print(f"[INFO] Invalid input, defaulting start time to {t_min:.2f}s")
+
+                try:
+                    end_input = input(f"Enter end time [s] (default {t_max:.2f}): ").strip()
+                    end_t = float(end_input) if end_input else t_max
+                except ValueError:
+                    end_t = t_max
+                    print(f"[INFO] Invalid input, defaulting end time to {t_max:.2f}s")
+
+                df = df[(df['t'] >= start_t) & (df['t'] <= end_t)]
+
+            self.data_df = df
             self.update_plots()
-            print(f"[INFO] Successfully loaded {len(self.data_df)} telemetry samples from {filepath}")
+            
+            # Update window title with the base name of the loaded file
+            base_filename = os.path.basename(filepath)
+            self.setWindowTitle(f"Coaxial TVC Post-Flight Telemetry Reviewer - [{base_filename}]")
+
+            print(f"[INFO] Successfully loaded and trimmed to {len(self.data_df)} telemetry samples from {filepath}")
         except Exception as e:
             print(f"[ERROR] Failed to load CSV file: {e}")
 
