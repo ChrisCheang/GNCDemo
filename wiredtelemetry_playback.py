@@ -50,9 +50,15 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         self.plot_euler.addLegend()
         self.plot_euler.setLabel('left', 'Angle', units='deg')
         self.plot_euler.setLabel('bottom', 'Time', units='s')
+        self.plot_euler.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_euler.getAxis('left').setGrid(100)
+        self.plot_euler.getAxis('bottom').setGrid(100)
+
         self.curve_pitch = self.plot_euler.plot(pen=pg.mkPen('r', width=1.5), name="Pitch (Y)")
         self.curve_yaw   = self.plot_euler.plot(pen=pg.mkPen('g', width=1.5), name="Yaw (X)")
         self.curve_roll  = self.plot_euler.plot(pen=pg.mkPen('b', width=1.5), name="Roll (Z)")
+        self.curve_target_pitch = self.plot_euler.plot(pen=pg.mkPen('r', style=QtCore.Qt.DashLine, width=1.2), name="Target Pitch")
+        self.curve_target_yaw   = self.plot_euler.plot(pen=pg.mkPen('g', style=QtCore.Qt.DashLine, width=1.2), name="Target Yaw")
         left_layout.addWidget(self.plot_euler)
 
         # Plot 2: Actuators (ESCs & Servos)
@@ -60,6 +66,10 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         self.plot_actuators.addLegend()
         self.plot_actuators.setLabel('left', 'Pulse Width', units='us')
         self.plot_actuators.setLabel('bottom', 'Time', units='s')
+        self.plot_actuators.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_actuators.getAxis('left').setGrid(100)
+        self.plot_actuators.getAxis('bottom').setGrid(100)
+
         self.curve_esc_top    = self.plot_actuators.plot(pen=pg.mkPen('c', width=1.5), name="ESC Top")
         self.curve_esc_bot    = self.plot_actuators.plot(pen=pg.mkPen('m', width=1.5), name="ESC Bot")
         self.curve_servo_p    = self.plot_actuators.plot(pen=pg.mkPen('y', width=1.5), name="Servo Pitch")
@@ -70,9 +80,17 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         self.plot_alt = pg.PlotWidget(title="Kalman Filtered Altitude (Z)")
         self.plot_alt.setLabel('left', 'Altitude', units='m')
         self.plot_alt.setLabel('bottom', 'Time', units='s')
+        self.plot_alt.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_alt.getAxis('left').setGrid(100)
+        self.plot_alt.getAxis('bottom').setGrid(100)
+
         self.curve_alt = self.plot_alt.plot(pen=pg.mkPen('g', width=2), name="Alt Z")
         self.curve_target_alt = self.plot_alt.plot(pen=pg.mkPen('c', style=QtCore.Qt.DashLine, width=1.5), name="Target Alt")
         left_layout.addWidget(self.plot_alt)
+
+        # Sync X-axis of actuators and altitude plots to euler plot
+        self.plot_actuators.setXLink(self.plot_euler)
+        self.plot_alt.setXLink(self.plot_euler)
 
         # Right Side Layout: Top-Down 2D Position Plot (X Vertical Up, Y Horizontal Left)
         right_layout = QtWidgets.QVBoxLayout()
@@ -81,6 +99,8 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         self.plot_pos_2d.setLabel('left', 'X Position / North', units='m')      # Vertical axis
         self.plot_pos_2d.setLabel('bottom', 'Y Position / West', units='m')    # Horizontal axis
         self.plot_pos_2d.showGrid(x=True, y=True, alpha=0.3)
+        self.plot_pos_2d.getAxis('left').setGrid(100)
+        self.plot_pos_2d.getAxis('bottom').setGrid(100)
         self.plot_pos_2d.setAspectLocked(True, ratio=1.0)                       # Maintain 1:1 spatial aspect ratio
         
         # Lock 2D view limits to ±3m on both axes
@@ -90,8 +110,17 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         # Invert X-axis so positive Y points Left according to NWU standard top-down view
         self.plot_pos_2d.getPlotItem().invertX(True)
 
+        # Matplotlib Colormap & Scatter plot for time gradient path
+        self.cmap = pg.colormap.get('jet', source='matplotlib')
+        self.scatter_pos_2d = pg.ScatterPlotItem(size=6, pen=None, name="Path")
+        self.plot_pos_2d.addItem(self.scatter_pos_2d)
+
+        # Color bar legend on the side (using getPlotItem() for correct layout insertion)
+        self.img_dummy = pg.ImageItem()
+        self.color_bar = pg.ColorBarItem(colorMap=self.cmap, label="Time (s)", width=15)
+        self.color_bar.setImageItem(self.img_dummy, insert_in=self.plot_pos_2d.getPlotItem())
+
         # Trajectory curve line and live position markers
-        self.curve_pos_2d = self.plot_pos_2d.plot(pen=pg.mkPen('y', width=2), name="Path")
         self.point_current_pos = self.plot_pos_2d.plot(
             pen=None, symbol='o', symbolSize=10, symbolBrush='r', name="Current Pos"
         )
@@ -133,10 +162,12 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         # Render over the ENTIRE flight duration stored in the CSV
         t_vals = self.data_df["t"].values
 
-        # 1. Update Orientation Angles
+        # 1. Update Orientation Angles & Target Traces
         self.curve_pitch.setData(t_vals, self.data_df["pitch_deg"].values)
         self.curve_yaw.setData(t_vals, self.data_df["yaw_deg"].values)
         self.curve_roll.setData(t_vals, self.data_df["roll_deg"].values)
+        self.curve_target_pitch.setData(t_vals, self.data_df["target_pitch_deg"].values)
+        self.curve_target_yaw.setData(t_vals, self.data_df["target_yaw_deg"].values)
 
         # 2. Update Actuator Microseconds
         self.curve_esc_top.setData(t_vals, self.data_df["esc_top_us"].values)
@@ -148,14 +179,25 @@ class FlightTelemetryReviewer(QtWidgets.QMainWindow):
         self.curve_alt.setData(t_vals, self.data_df["altitude_z"].values)
         self.curve_target_alt.setData(t_vals, self.data_df["target_altitude"].values)
 
-        # 4. Update 2D NWU Top-Down Position Plot & End-Point Markers
+        # 4. Update 2D NWU Top-Down Position Plot with Rainbow Time Gradient & Markers
         pos_x = self.data_df["pos_x"].values  # Vertical axis on graph
         pos_y = self.data_df["pos_y"].values  # Horizontal axis on graph
         
-        # Plot (Y, X) so Y position maps to horizontal axis and X position maps to vertical axis
-        self.curve_pos_2d.setData(pos_y, pos_x)
-        if len(pos_x) > 0:
-            self.point_current_pos.setData([pos_y[-1]], [pos_x[-1]])
+        if len(t_vals) > 0:
+            t_min, t_max = t_vals[0], t_vals[-1]
+            if t_max > t_min:
+                norm_t = (t_vals - t_min) / (t_max - t_min)
+            else:
+                norm_t = np.zeros_like(t_vals)
+            colors = self.cmap.map(norm_t, mode='qcolor')
+            spots = [{'pos': (y, x), 'brush': pg.mkBrush(c), 'pen': None} for x, y, c in zip(pos_x, pos_y, colors)]
+            self.scatter_pos_2d.setData(spots)
+
+            # Update ColorBar levels
+            self.color_bar.setLevels((t_min, t_max))
+
+            if len(pos_x) > 0:
+                self.point_current_pos.setData([pos_y[-1]], [pos_x[-1]])
 
         target_pitch = self.data_df["target_pitch_deg"].values
         target_yaw = self.data_df["target_yaw_deg"].values
