@@ -53,9 +53,9 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- OUTER POSITION PID TUNING & TARGETS ---
-float pos_kp = 0.3f;        // Position proportional gain
+float pos_kp = 3.0f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
-float pos_kd = 0.2f;        // Position derivative gain
+float pos_kd = 1.5f;        // Position derivative gain
 
 float target_px = 0.0f;     // Earth-fixed X target position (m)
 float target_py = 0.0f;     // Earth-fixed Y target position (m)
@@ -72,9 +72,9 @@ float prev_pitch_err = 0.0f;
 float prev_yaw_err = 0.0f;
 
 // --- TVC PID TUNING & LIMITS ---
-float tvc_kp = 0.7f;       // Proportional gain
+float tvc_kp = 0.5f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.1f;      // Derivative gain
+float tvc_kd = 0.05f;      // Derivative gain
 float d_lpf_alpha = 0.02f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
 int servo_center_us = 1500; // Center position in microseconds
@@ -93,9 +93,9 @@ float yaw_d_filtered = 0.0f;
 bool pid_first_run = true;
 
 // --- ROLL PID TUNING & LIMITS ---
-float roll_kp = 2.0f;
+float roll_kp = 4.0f;
 float roll_ki = 0.0f;
-float roll_kd = 0.2f;
+float roll_kd = 0.8f;
 
 float roll_integral = 0.0f;
 float prev_roll_deg = 0.0f;
@@ -113,9 +113,9 @@ float qy_init = 0.0f;
 float qz_init = 0.0f;
 
 // --- ALTITUDE PID TUNING & LIMITS ---
-float alt_kp = 500.0f;
-float alt_ki = 150.0f;
-float alt_kd = 250.0f;
+float alt_kp = 750.0f;
+float alt_ki = 100.0f;
+float alt_kd = 200.0f;
 
 bool calibrate_esc = false; // Set to true before uploading if you need to recalibrate the ESCs
 
@@ -125,8 +125,8 @@ float prev_alt_error = 0.0f;
 float alt_d_filtered = 0.0f;
 
 float target_altitude = 1.0f; // Target altitude in meters
-int hover_throttle_us = 1800; // Base throttle needed to maintain hover
-int max_throttle_us = 1950;   // Maximum throttle limit for safety during testing
+int hover_throttle_us = 1700; // Base throttle needed to maintain hover
+int max_throttle_us = 2000;   // Maximum throttle limit for safety during testing
 
 unsigned long last_telemetry_time = 0;
 const unsigned long TELEMETRY_INTERVAL_US = 20000; // 50 Hz (20 ms)
@@ -167,6 +167,15 @@ float pos_lpf_alpha = 0.03f;   // Adjustable LPF alpha for px_c and py_c
 bool has_taken_off = false;
 float px_bias = 0.0f;
 float py_bias = 0.0f;
+
+// --- SUBSYSTEM INTERVAL TIMERS (TIME BETWEEN EXECUTIONS) ---
+unsigned long last_xy_micros = 0;
+unsigned long last_tvc_micros = 0;
+unsigned long last_esc_micros = 0;
+
+unsigned long dt_xy_interval_us = 0;
+unsigned long dt_tvc_interval_us = 0;
+unsigned long dt_esc_interval_us = 0;
 
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
@@ -629,15 +638,15 @@ void loop() {
   } 
   else if (t < 4.0f) {
     // Increases linearly from CoM_height to CoM_height + 0.5 over 2 seconds (t from 2 to 4)
-    target_altitude = CoM_height + 0.5f * ((t - 2.0f) / 2.0f);
+    target_altitude = CoM_height + 0.3f * ((t - 2.0f) / 2.0f);
   } 
   else if (t < 5.0f) {
     // Holds for one second (t from 4 to 5) at CoM_height + 0.5
-    target_altitude = CoM_height + 0.5f;
+    target_altitude = CoM_height + 0.3f;
   } 
   else if (t <= 7.0f) {
     // Decreases linearly back to CoM_height over another 2 seconds (t from 5 to 7)
-    target_altitude = (CoM_height + 0.5f) - 0.5f * ((t - 5.0f) / 2.0f);
+    target_altitude = (CoM_height + 0.3f) - 0.3f * ((t - 5.0f) / 2.0f);
   } 
   else {
     // Hold at CoM_height after profile completion
@@ -824,7 +833,7 @@ void loop() {
 
       // Check ESC command threshold to detect initial launch
       bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
-      if (kalman.x[2] > CoM_height + 0.03) {
+      if (kalman.x[2] > CoM_height + 0.05) {
         has_taken_off = true; // Permanently latch takeoff state
       }
 
@@ -849,8 +858,10 @@ void loop() {
       delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
       delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
 
-      px_c = kalman.x[0] - delta_p_x - px_bias;
-      py_c = kalman.x[1] - delta_p_y - py_bias;
+      //px_c = kalman.x[0] - delta_p_x - px_bias;
+      //py_c = kalman.x[1] - delta_p_y - py_bias;
+
+      unsigned long t_xy_start = micros();
 
       // 2. Corrected Earth-fixed Position States with Direct In-Place LPF
       float raw_px_c = kalman.x[0] - delta_p_x - px_bias;
@@ -884,6 +895,12 @@ void loop() {
 
       ax_cmd = (pos_kp * err_px) + (pos_ki * pos_x_integral) - (pos_kd * vx_c_filtered);
       ay_cmd = (pos_kp * err_py) + (pos_ki * pos_y_integral) - (pos_kd * vy_c_filtered);
+
+      // dt recording for xy position loop
+      unsigned long now_us = micros();
+      if (last_xy_micros == 0) last_xy_micros = now_us;
+      dt_xy_interval_us = now_us - last_xy_micros;
+      last_xy_micros = now_us;
 
       // 5. Form Target Vehicle Attitude Vector in Earth NWU Frame
       const float g = 9.81f;
@@ -924,6 +941,12 @@ void loop() {
       pitch_d_filtered += d_lpf_alpha * (pitch_d_raw - pitch_d_filtered);
       yaw_d_filtered   += d_lpf_alpha * (yaw_d_raw - yaw_d_filtered);
 
+      // dt recording for attitude loop
+      unsigned long now_us_tvc = micros();
+      if (last_tvc_micros == 0) last_tvc_micros = now_us_tvc;
+      dt_tvc_interval_us = now_us_tvc - last_tvc_micros;
+      last_tvc_micros = now_us_tvc;
+
       // 9. Inner TVC PID Commands
       float pitch_output_deg = (tvc_kp * pitch_err) + (tvc_ki * pitch_integral) + (tvc_kd * pitch_d_filtered);
       float yaw_output_deg   = (tvc_kp * yaw_err)   + (tvc_ki * yaw_integral)   + (tvc_kd * yaw_d_filtered);
@@ -944,7 +967,7 @@ void loop() {
       int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
 
       // Stop/center servo commands if altitude is below CoM_height + 0.03m
-      if (kalman.x[2] < (CoM_height + 0.05f)) {
+      if (kalman.x[2] < (CoM_height + 0.025f)) {
         pitch_us = servo_center_us;
         yaw_us = servo_center_us;
       }
@@ -969,6 +992,12 @@ void loop() {
       roll_d_filtered += d_lpf_alpha * (roll_d_raw - roll_d_filtered);
       alt_d_filtered  += d_lpf_alpha * (alt_d_raw - alt_d_filtered);
 
+      // dt recording for altitude loop
+      unsigned long now_us_esc = micros();
+      if (last_esc_micros == 0) last_esc_micros = now_us_esc;
+      dt_esc_interval_us = now_us_esc - last_esc_micros;
+      last_esc_micros = now_us_esc;
+
       float roll_output = (roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered);
       float alt_output  = (alt_kp * alt_error) + (alt_ki * alt_integral)  + (alt_kd * alt_d_filtered);
 
@@ -977,6 +1006,11 @@ void loop() {
 
       escTop_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
       escBot_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
+
+      if (t > 7.0f) {
+        escTop_us = 1000;
+        escBot_us = 1000;
+      } 
 
       escTop.writeMicroseconds(escTop_us);
       escBot.writeMicroseconds(escBot_us);
@@ -1011,50 +1045,44 @@ void loop() {
         Serial.print(qy);                Serial.print(",");
         Serial.print(qz);                Serial.print(",");
 
-        // Orientation Angles (Pitch, Yaw, Roll in deg, note that pitch is around Y, yaw around X and roll around Z)
+        // Orientation Angles
         Serial.print(pitch_deg);         Serial.print(",");
         Serial.print(yaw_deg);           Serial.print(",");
         Serial.print(roll_deg);          Serial.print(",");
 
-        // Angular Rates (Pitch, Yaw, Roll rates in deg/s)
+        // Angular Rates
         Serial.print(pitch_d_filtered);  Serial.print(",");
         Serial.print(yaw_d_filtered);    Serial.print(",");
         Serial.print(roll_d_filtered);   Serial.print(",");
 
         // Kalman Filtered 1D Altitude (meters)
-        Serial.print(kalman.x[2], 4);       Serial.print(",");
+        Serial.print(kalman.x[2], 4);    Serial.print(",");
 
-        // Top & Bottom Motor Pulse Widths (microseconds)
-        Serial.print(escTop_us);            Serial.print(",");
-        Serial.print(escBot_us);            Serial.print(",");
+        // Top & Bottom Motor Pulse Widths
+        Serial.print(escTop_us);         Serial.print(",");
+        Serial.print(escBot_us);         Serial.print(",");
 
-        // Servo Command Angles (deg)
-        Serial.print(pitchServo.readMicroseconds());     Serial.print(",");
-        Serial.print(yawServo.readMicroseconds());     Serial.print(",");
+        // Servo Command Angles
+        Serial.print(pitchServo.readMicroseconds()); Serial.print(",");
+        Serial.print(yawServo.readMicroseconds());   Serial.print(",");
 
-        // X and Y positions in earth fixed NWU frame (aligns with body frame at startup)
-        Serial.print(px_c, 4);       Serial.print(",");
-        Serial.print(py_c, 4);       Serial.print(",");
+        // X and Y positions
+        Serial.print(px_c, 4);           Serial.print(",");
+        Serial.print(py_c, 4);           Serial.print(",");
 
-        //Serial.print(px_bias, 4);     Serial.print(",");
-        //Serial.println(py_bias, 4);     Serial.print(",");
+        Serial.print(target_pitch_deg, 4); Serial.print(",");
+        Serial.print(target_yaw_deg, 4);   Serial.print(",");
+        Serial.print(target_altitude, 4);  Serial.print(",");
 
-        Serial.print(target_pitch_deg, 4);       Serial.print(",");
-        Serial.print(target_yaw_deg, 4);       Serial.print(",");
-        Serial.println(target_altitude, 4);
+        // Amended execution interval times (microseconds between runs)
+        Serial.print(dt_xy_interval_us);   Serial.print(",");
+        Serial.print(dt_tvc_interval_us);  Serial.print(",");
+        Serial.println(dt_esc_interval_us);
 
-        // Serial.print(",");
-        // Serial.println(has_taken_off);
-        // // wx wy wz, verified to output data
-        // Serial.print(wx);       Serial.print(",");
-        // Serial.print(wy);       Serial.print(",");   
-        // Serial.println(wz);       
-
-        // MTF01P
+        // MTF01P debug line
         Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
                     tof_distance_m, tof_strength, tof_precision, 
                     flow_vel_x_m_s, flow_vel_y_m_s, flow_quality);
-
       }
     }
 
