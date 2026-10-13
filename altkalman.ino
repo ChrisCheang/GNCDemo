@@ -54,7 +54,7 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- OUTER POSITION PID TUNING & TARGETS ---
-float pos_kp = 1.0f;        // Position proportional gain
+float pos_kp = 2.5f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
 float pos_kd = 0.6f;        // Position derivative gain
 
@@ -166,6 +166,7 @@ float pos_lpf_alpha = 0.03f;   // Adjustable LPF alpha for px_c and py_c
 
 // --- Global Origin & Latch State Variables ---
 bool has_taken_off = false;
+
 
 // --- POST-FLIGHT LANDING ESC LOCK STATES ---
 bool has_reached_altitude_peak = false;
