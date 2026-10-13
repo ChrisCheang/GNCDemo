@@ -178,6 +178,7 @@ float py_bias = 0.0f;
 unsigned long last_xy_micros = 0;
 unsigned long last_tvc_micros = 0;
 unsigned long last_esc_micros = 0;
+unsigned long last_ina_micros = 0; // Timer for rate-limiting INA228 I2C reads
 
 unsigned long dt_xy_interval_us = 0;
 unsigned long dt_tvc_interval_us = 0;
@@ -644,9 +645,14 @@ void loop() {
     myIMU.enableGyro(2);
   }
 
-  battery_voltage = ina.getBusVoltage();
-  battery_current = ina.getCurrent();
-  battery_power   = ina.getPower();
+  // Rate-limit INA228 I2C sensor reads to 10 Hz (every 100,000 microseconds)
+  unsigned long current_micros_ina = micros();
+  if (current_micros_ina - last_ina_micros >= 100000) {
+    last_ina_micros = current_micros_ina;
+    battery_voltage = ina.getBusVoltage();
+    battery_current = ina.getCurrent();
+    battery_power   = ina.getPower();
+  }
 
   // 1. Initialize microsecond-precision timer on the first loop iteration
   if (!loop_timer_started) {
