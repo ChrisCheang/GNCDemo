@@ -1,6 +1,7 @@
 #include <SPI.h>
 #include "SparkFun_BNO080_Arduino_Library.h" 
-#include <Adafruit_DPS310.h> 
+#include <Adafruit_DPS310.h>
+#include <INA228.h> 
 #include <Servo.h> 
 #include <math.h>
 
@@ -184,6 +185,11 @@ unsigned long dt_esc_interval_us = 0;
 
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
+INA228 ina(0x45); // Matek default decimal address 69 is 0x45 in hex
+
+float battery_voltage = 0.0f;
+float battery_current = 0.0f;
+float battery_power   = 0.0f;
 
 class StateEstimator6D {
 public:
@@ -479,6 +485,16 @@ void calculateInverseKinematics(float gimbal_pitch_rad, float gimbal_yaw_rad, fl
 void setup() {
   Serial.begin(115200);
   delay(100);
+
+
+  // initialize i2cinabm
+  Wire.begin();
+  if (!ina.begin()) {
+    Serial.println("WARNING: Matek I2C-INA-BM not detected!");
+  } else {
+    ina.setMaxCurrentShunt(204.8f, 0.0002f); // Max current 204.8A, 200 uOhm shunt
+  }
+
   
   // 1. Setup TVC Servos
   pitchServo.attach(SERVO_PITCH_PIN);
@@ -486,9 +502,12 @@ void setup() {
   pitchServo.writeMicroseconds(servo_center_us);
   yawServo.writeMicroseconds(servo_center_us);
 
-  // 2. Setup ESCs (Arming sequence)
-  // --- ESC CALIBRATION & SETUP PROCESS ---
+  
 
+  // 2. Setup ESCs (Arming sequence)
+
+  escTop.attach(ESC_TOP_PIN);
+  escBot.attach(ESC_BOT_PIN);
   // --- ESC CALIBRATION & SETUP PROCESS ---
   if (calibrate_esc) {
     // Note: Power the microcontroller via USB first to start the code BEFORE connecting the main LiPo battery.
@@ -529,11 +548,6 @@ void setup() {
     delay(4000); // Give ESCs time to initialize normally on standard boot
   }
 
-
-  escTop.attach(ESC_TOP_PIN);
-  escBot.attach(ESC_BOT_PIN);
-  escTop.writeMicroseconds(1000); // 1000us standard minimum PWM for arming ESCs
-  escBot.writeMicroseconds(1000);
 
   // Initialize PID history states
   pitch_integral = 0.0f;
@@ -629,6 +643,10 @@ void loop() {
     myIMU.enableGameRotationVector(2);
     myIMU.enableGyro(2);
   }
+
+  battery_voltage = ina.getBusVoltage();
+  battery_current = ina.getCurrent();
+  battery_power   = ina.getPower();
 
   // 1. Initialize microsecond-precision timer on the first loop iteration
   if (!loop_timer_started) {
@@ -1098,7 +1116,12 @@ void loop() {
         // Amended execution interval times (microseconds between runs)
         Serial.print(dt_xy_interval_us);   Serial.print(",");
         Serial.print(dt_tvc_interval_us);  Serial.print(",");
-        Serial.println(dt_esc_interval_us);
+        Serial.print(dt_esc_interval_us);  Serial.print(",");
+
+        // Battery stats
+        Serial.print(battery_voltage, 2);  Serial.print(",");
+        Serial.print(battery_current, 2);  Serial.print(",");
+        Serial.println(battery_power, 2);
 
         // MTF01P debug line
         Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
