@@ -1246,8 +1246,6 @@ void loop() {
             Serial.print(battery_current, 2);  Serial.print(",");
             Serial.print(battery_power, 2);    Serial.print(",");
 
-            Serial.println(hover_throttle_us);
-
             // MTF01P debug line
             Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
                         tof_distance_m, tof_strength, tof_precision, 
