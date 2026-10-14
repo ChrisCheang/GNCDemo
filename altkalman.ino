@@ -41,8 +41,10 @@ const float SENSOR_OFFSET_X =  0.13f; // 13cm forward of CoM
 const float SENSOR_OFFSET_Y =  0.15f; // 15cm left of CoM
 const float SENSOR_OFFSET_Z = -0.36f; // 40cm below CoM (Z is UP in NWU, so below is negative)
 
-// If the height of the CoM changes, remember to update below
-float CoM_height = 0.57f;
+// Stats
+float m = 1.232; // kg (14-10-2026, no gps nor ebyte)
+float l = 0.35; // m, vertical distance between gimbal pivot and CoM (14-10-2026, no gps nor ebyte)
+float CoM_height = 0.57f; // m
 
 // --- TVC KINEMATIC CONSTANTS (Ported from kinematics.py) ---
 const float KIN_A = 12.0f;
@@ -439,6 +441,23 @@ float tempCompCoef = 0.0f;
 
 unsigned long prev_imu_time = 0;
 
+// Polynomial function to calculate expected thrust (kg) for the 9047 prop from voltage (V) and throttle fraction (0.0 to 1.0)
+float thrust(float voltage, float throttle_fraction) {
+    float th = constrain(throttle_fraction, 0.0f, 1.0f);
+    float t_val = (voltage / 12.6f) * (2.48f * th - 0.51f);
+    return t_val;
+}
+
+// Inverse function to calculate required throttle fraction (0.0 to 1.0) for the 9047 prop to achieve target thrust (grams) at a given voltage (V)
+float throttle_cmd(float target_thrust_kg, float voltage) {
+    if (voltage < 5.0f) voltage = 12.6f; // Failsafe fallback voltage
+    
+    // Algebraically inverted from: thrust = (voltage / 12.6f) * (2.48f * th - 0.51f)
+    float th = ((target_thrust_kg * 12.6f / voltage) + 0.51f) / 2.48f;
+    
+    return constrain(th, 0.0f, 1.0f);
+}
+
 // ---------------------------------------------------------
 // INVERSE KINEMATICS SOLVER (Ported from kinematics.py)
 // ---------------------------------------------------------
@@ -665,6 +684,12 @@ void loop() {
     battery_voltage = ina.getBusVoltage();
     battery_current = ina.getCurrent();
     battery_power   = ina.getPower();
+
+    // Calculate required hover throttle dynamically (Coaxial setup splits total weight across 2 motors)
+    float hover_throttle_fraction = throttle_cmd(m, battery_voltage);
+    
+    // Convert throttle fraction (0.0 to 1.0) to PWM microseconds (1000 to 2000 us)
+    hover_throttle_us = 1000 + (int)(hover_throttle_fraction * 1000.0f);
   }
 
 
@@ -1219,7 +1244,9 @@ void loop() {
             // Battery stats
             Serial.print(battery_voltage, 2);  Serial.print(",");
             Serial.print(battery_current, 2);  Serial.print(",");
-            Serial.println(battery_power, 2);
+            Serial.print(battery_power, 2);    Serial.print(",");
+
+            Serial.println(hover_throttle_us);
 
             // MTF01P debug line
             Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
