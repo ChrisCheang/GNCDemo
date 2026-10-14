@@ -1244,7 +1244,7 @@ void loop() {
             // Battery stats
             Serial.print(battery_voltage, 2);  Serial.print(",");
             Serial.print(battery_current, 2);  Serial.print(",");
-            Serial.print(battery_power, 2);    Serial.print(",");
+            Serial.println(battery_power, 2);
 
             // MTF01P debug line
             Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
