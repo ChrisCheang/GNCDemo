@@ -32,7 +32,7 @@ Servo escBot;
 // --- MISSION TIMER & ALTITUDE PROFILE ---
 unsigned long loop_start_micros = 0;
 bool loop_timer_started = false;
-float t = 0.0f; // Time in seconds to microsecond precision
+float t = -1.0f; // Time in seconds to microsecond precision
 
 // --- MTF-01P Sensor Offset from Center of Mass (CoM) ---
 // Defined in the Body-Fixed NWU Frame (North/Forward=X, West/Left=Y, Up=Z).
@@ -85,6 +85,10 @@ int pitch_us = servo_center_us;
 int yaw_us = servo_center_us;
 
 // TVC PID State Variables
+float roll_deg  = 0.0; // Z
+float pitch_deg = 0.0; // Y
+float yaw_deg   = 0.0; // X
+
 float pitch_integral = 0.0f;
 float yaw_integral = 0.0f;
 float prev_pitch_deg = 0.0f;
@@ -167,6 +171,14 @@ float pos_lpf_alpha = 0.03f;   // Adjustable LPF alpha for px_c and py_c
 // --- Global Origin & Latch State Variables ---
 bool has_taken_off = false;
 
+// --- Altitude Bias & Pre-PID Calibration Variables ---
+bool alt_bias_calculated = false;
+bool calibration_initialized = false;
+unsigned long calibration_start_micros = 0;
+float alt_sum = 0.0f;
+int alt_sample_count = 0;
+float alt_bias = 0.0f;
+float current_alt = CoM_height;
 
 // --- POST-FLIGHT LANDING ESC LOCK STATES ---
 bool has_reached_altitude_peak = false;
@@ -655,6 +667,78 @@ void loop() {
     battery_power   = ina.getPower();
   }
 
+
+  // --- Pre-PID Altitude Calibration Sequence (t from -1.0 to 0.0) ---
+  if (!alt_bias_calculated) {
+    if (!calibration_initialized) {
+      calibration_start_micros = micros();
+      calibration_initialized = true;
+    }
+    
+    float elapsed_cal_time = (micros() - calibration_start_micros) * 1e-6f;
+    t = elapsed_cal_time - 1.0f; // t starts at -1.0s and counts up to 0.0s
+
+    // Keep reading sensors and Kalman filter active during calibration
+    if (myIMU.dataAvailable() == true) {
+      unsigned long now_micros = micros();
+      if (prev_imu_time == 0) prev_imu_time = now_micros;
+      float dt = (now_micros - prev_imu_time) * 1e-6f;
+      prev_imu_time = now_micros;
+
+      float accel_x = -myIMU.getLinAccelZ(); 
+      float accel_y = myIMU.getLinAccelY();
+      float accel_z = myIMU.getLinAccelX();
+
+      float raw_qw = myIMU.getQuatReal();
+      float raw_qx = myIMU.getQuatI();
+      float raw_qy = myIMU.getQuatJ();
+      float raw_qz = myIMU.getQuatK();
+
+      const float m_w =  0.7071068f;
+      const float m_y =  0.7071068f;
+      float qw = raw_qw * m_w - raw_qy * m_y;
+      float qx = raw_qx * m_w - raw_qz * m_y;
+      float qy = raw_qw * m_y + raw_qy * m_w;
+      float qz = raw_qx * m_y + raw_qz * m_w;
+
+      float norm = sqrtf(qw * qw + qx * qx + qy * qy + qz * qz);
+      if (norm > 0.0f) { qw /= norm; qx /= norm; qy /= norm; qz /= norm; }
+
+      kalman.predict(accel_x, accel_y, accel_z, dt, qw, qx, qy, qz);
+
+      // Parse MAVLink distance sensor during calibration
+      mavlink_message_t msg;
+      mavlink_status_t status;
+      while (Serial4.available() > 0) {
+        uint8_t c = Serial4.read();
+        if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
+          if (msg.msgid == MAVLINK_MSG_ID_DISTANCE_SENSOR) {
+            mavlink_distance_sensor_t dist;
+            mavlink_msg_distance_sensor_decode(&msg, &dist);
+            tof_distance_m = (float)dist.current_distance / 100.0f;
+            kalman.updateAltitude(tof_distance_m, qw, qx, qy, qz);
+          }
+        }
+      }
+
+      alt_sum += kalman.x[2];
+      alt_sample_count++;
+      current_alt = kalman.x[2];
+    }
+
+    // After 1 full second, calculate average and lock the constant bias offset
+    if (elapsed_cal_time >= 1.0f) {
+      float mean_initial_alt = (alt_sample_count > 0) ? (alt_sum / alt_sample_count) : kalman.x[2];
+      alt_bias = CoM_height - mean_initial_alt;
+      alt_bias_calculated = true;
+      
+      // Reset loop timer so main mission timer and PIDs start exactly at t = 0.0f
+      loop_start_micros = micros();
+      loop_timer_started = true;
+    }
+    return; // Skip normal control loop and PIDs until calibration is complete
+  }
+
   // 1. Initialize microsecond-precision timer on the first loop iteration
   if (!loop_timer_started) {
     loop_start_micros = micros();
@@ -685,457 +769,465 @@ void loop() {
 
   // 1. Read BNO085 IMU 
   if (myIMU.dataAvailable() == true) {
-    unsigned long now_micros = micros();
-    
-    if (prev_imu_time == 0) prev_imu_time = now_micros;
-    
-    float dt = (now_micros - prev_imu_time) * 1e-6f;
-    prev_imu_time = now_micros;
 
-    // --- ACCELERATION & KALMAN 
-    float accel_x = -myIMU.getLinAccelZ(); 
-    float accel_y = myIMU.getLinAccelY();
-    float accel_z = myIMU.getLinAccelX();
-
-    imu_vel += accel_z * dt;
-    imu_alt += imu_vel * dt + 0.5f * accel_z * dt * dt;
-
-    // 1. Fetch raw quaternions from BNO085
-    float raw_qw = myIMU.getQuatReal();
-    float raw_qx = myIMU.getQuatI();
-    float raw_qy = myIMU.getQuatJ();
-    float raw_qz = myIMU.getQuatK();
-
-    // 2. Define the mounting correction quaternion inverse (q_mount^-1)
-    // Corrects the static -90 deg Y-axis pitch offset from vertical mounting
-    const float m_w =  0.7071068f;
-    const float m_x =  0.0f;
-    const float m_y =  0.7071068f;
-    const float m_z =  0.0f;
-
-    // 3. Perform Right-Multiplication (Local Body Frame Rotation): q_body = q_raw * q_mount
-    // Optimized Hamilton product where m_x = 0 and m_z = 0
-    float qw = raw_qw * m_w - raw_qy * m_y;
-    float qx = raw_qx * m_w - raw_qz * m_y;
-    float qy = raw_qw * m_y + raw_qy * m_w;
-    float qz = raw_qx * m_y + raw_qz * m_w;
-
-    // 4. Normalize the result to prevent numerical drift in PID
-    float norm = sqrtf(qw * qw + qx * qx + qy * qy + qz * qz);
-    if (norm > 0.0f) {
-        qw /= norm;
-        qx /= norm;
-        qy /= norm;
-        qz /= norm;
-    }
-
-    kalman.predict(accel_x, accel_y, accel_z, dt, qw, qx, qy, qz);
-
-    // 5. Retrieve gyro rates from imu, NWU correction from board mount orientation applied
-    float wx = -myIMU.getGyroZ();
-    float wy = myIMU.getGyroY();
-    float wz = myIMU.getGyroX();
-
-    // With the mounting correction applied, the quaternion (qw, qx, qy, qz)
-    // now represents a sensor sitting perfectly flat. Z+ is the vertical axis.
-    
-    float sin_roll = 2.0f * (qw * qz + qx * qy);
-    float cos_roll = 1.0f - 2.0f * (qy * qy + qz * qz);
-    float roll_rad = atan2(sin_roll, cos_roll);
-
-    float sin_pitch = 2.0f * (qw * qy - qz * qx);
-    float pitch_rad;
-    if (abs(sin_pitch) >= 1.0f) {
-        pitch_rad = copysign(PI / 2.0f, sin_pitch); // Clamping failsafe for floating-point bounds
-    } else {
-        pitch_rad = asin(sin_pitch);
-    }
-
-    float sin_yaw = 2.0f * (qw * qx + qy * qz);
-    float cos_yaw = 1.0f - 2.0f * (qx * qx + qy * qy);
-    float yaw_rad = atan2(sin_yaw, cos_yaw); 
-
-    // Convert to degrees for telemetry and PID controller inputs
-    float roll_deg  = roll_rad  * (180.0f / PI); // Z
-    float pitch_deg = pitch_rad * (180.0f / PI); // Y
-    float yaw_deg   = yaw_rad   * (180.0f / PI); // X
-
-
-    // optical flow data parsing
-    mavlink_message_t msg;
-    mavlink_status_t status;
-
-    // Declare optical flow rate variables (static so their values persist across serial reads)
-    static float flow_rad_s_x = 0.0f;
-    static float flow_rad_s_y = 0.0f;
-
-    // Read all available data on Serial4 without blocking
-    while (Serial4.available() > 0) {
-      uint8_t c = Serial4.read();
-
-      // Pass each byte to the MAVLink decoder
-      if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
-        
-        // Optional filter: If you specifically want to ignore other sensors 
-        // and only listen to your Component ID 88, uncomment the line below:
-        // if (msg.compid != 88) continue; 
-
-        switch (msg.msgid) {
-            
-          // 1. Parse Optical Flow Velocity & Quality (#100)
-          case MAVLINK_MSG_ID_OPTICAL_FLOW: {
-            mavlink_optical_flow_t flow;
-            mavlink_msg_optical_flow_decode(&msg, &flow);
-            
-            flow_quality = flow.quality; // Flow confidence (0 - 255)
-
-            // Fallback logic: If float flow_comp_m_x is 0, read integer flow_x / flow_y
-            // mapping from sensor axes to NWU body axes: X+ --> Y-, Y+ --> X+
-            if (abs(flow.flow_comp_m_x) > 0.001f || abs(flow.flow_comp_m_y) > 0.001f) {
-                flow_vel_x_m_s = flow.flow_comp_m_y;
-                flow_vel_y_m_s = flow.flow_comp_m_x;
-            } else {
-                // Convert integer flow delta to velocity (scale factor of 1000.0f)
-                flow_vel_x_m_s = (float)flow.flow_y / 1000.0f; 
-                flow_vel_y_m_s = (float)flow.flow_x / 1000.0f;
-            }
-            // Convert ground linear velocity (m/s) to angular flow rate (rad/s):
-            // omega_flow = v / D
-            // if (tof_distance_m > 0.05f) {
-            //     flow_rad_s_x = flow_vel_x_m_s / tof_distance_m;
-            //     flow_rad_s_y = flow_vel_y_m_s / tof_distance_m;
-            // } else {
-            //     flow_rad_s_x = 0.0f;
-            //     flow_rad_s_y = 0.0f;
-            // }
-            kalman.updateFlow(flow_vel_x_m_s, flow_vel_y_m_s, 
-                    wx, wy, wz, 
-                    qw, qx, qy, qz, 
-                    tof_distance_m);
-            break;
-          }
-
-          // 2. Parse ToF Distance, Strength & Precision (#132)
-          case MAVLINK_MSG_ID_DISTANCE_SENSOR: {
-            mavlink_distance_sensor_t dist;
-            mavlink_msg_distance_sensor_decode(&msg, &dist);
-            
-            // Convert current_distance from cm to meters
-            tof_distance_m = (float)dist.current_distance / 100.0f; 
-            
-            // Extract ToF Signal Quality & Precision
-            tof_strength  = dist.signal_quality; // Valid if MAVLink v2 packet
-            tof_precision = dist.covariance;     // 0 if module does not transmit variance
-            kalman.updateAltitude(tof_distance_m, qw, qx, qy, qz);
-            break;
-          }
-        }
-      }
-
-
-      
-
-    }
+    // --- Apply Constant Altitude Bias Offset ---
+    current_alt = kalman.x[2] + alt_bias;
 
     int escTop_us = 1000;
     int escBot_us = 1000;
 
-    // --- PID CONTROLLER IMPLEMENTATION ---
-    if (pid_first_run) {
-      prev_pitch_deg = pitch_deg;
-      prev_yaw_deg = yaw_deg;
-      prev_roll_deg = roll_deg;
-      prev_alt_error = target_altitude - kalman.x[2];
-      pid_first_run = false;
-    }
-
-    if (dt > 0.0001f) {
-      // 1. Compute current Body-to-Earth Rotation Matrix components from active quaternions
-      float qx2 = qx * qx, qy2 = qy * qy, qz2 = qz * qz;
-
-      R00 = 1.0f - 2.0f * (qy2 + qz2);
-      R01 = 2.0f * (qx * qy - qw * qz);
-      R02 = 2.0f * (qx * qz + qw * qy);
-
-      R10 = 2.0f * (qx * qy + qw * qz);
-      R11 = 1.0f - 2.0f * (qx2 + qz2);
-      R12 = 2.0f * (qy * qz - qw * qx);
-
-      // Check ESC command threshold to detect initial launch
-      bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
-      if (kalman.x[2] > CoM_height + 0.05) {
-        has_taken_off = true; // Permanently latch takeoff state
+    // --- PID CONTROLLER IMPLEMENTATION (Initiated only after bias calculation at t >= 0) ---
+    if (alt_bias_calculated) {
+      if (pid_first_run) {
+        prev_pitch_deg = pitch_deg;
+        prev_yaw_deg = yaw_deg;
+        prev_roll_deg = roll_deg;
+        prev_alt_error = target_altitude - current_alt;
+        pid_first_run = false;
       }
 
-      // Pre-flight clamp: ONLY runs prior to the very first takeoff
-      if (!has_taken_off) {
-        // 1. Hold Kalman planar position and velocity states at zero while on launchpad
-        kalman.x[0] = 0.0f; // px
-        kalman.x[1] = 0.0f; // py
-        kalman.x[3] = 0.0f; // vx
-        kalman.x[4] = 0.0f; // vy
-
-        // 2. Latch resting ground tilt offset as baseline bias
-        px_bias = -delta_p_x;
-        py_bias = -delta_p_y;
-      }
-
-      // Ground intersection point of the tilted optical axis relative to CoM:
-      float p_x_tilted = R00 * SENSOR_OFFSET_X + R01 * SENSOR_OFFSET_Y + R02 * (SENSOR_OFFSET_Z - tof_distance_m);
-      float p_y_tilted = R10 * SENSOR_OFFSET_X + R11 * SENSOR_OFFSET_Y + R12 * (SENSOR_OFFSET_Z - tof_distance_m);
-
-      // Attitude-induced position shift relative to zero-tilt level attitude
-      delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
-      delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
-
-      //px_c = kalman.x[0] - delta_p_x - px_bias;
-      //py_c = kalman.x[1] - delta_p_y - py_bias;
-
-      unsigned long t_xy_start = micros();
-
-      // 2. Corrected Earth-fixed Position States with Direct In-Place LPF
-      float raw_px_c = kalman.x[0] - delta_p_x - px_bias;
-      float raw_py_c = kalman.x[1] - delta_p_y - py_bias;
-
-      px_c += pos_lpf_alpha * (raw_px_c - px_c);
-      py_c += pos_lpf_alpha * (raw_py_c - py_c);
-
-      // 3. Numerical Derivative of px_c and py_c (avoiding kalman.x[3] / x[4])
-      float vx_c_raw = (px_c - prev_px_c) / dt;
-      float vy_c_raw = (py_c - prev_py_c) / dt;
-      prev_px_c = px_c;
-      prev_py_c = py_c;
-
-      vx_c_filtered += d_lpf_alpha * (vx_c_raw - vx_c_filtered);
-      vy_c_filtered += d_lpf_alpha * (vy_c_raw - vy_c_filtered);
-
-      // 4. Outer Position PID Control Loops (Earth NWU Frame)
-      float err_px = target_px - px_c;
-      float err_py = target_py - py_c;
-
-      if (has_taken_off) {
-        pos_x_integral += err_px * dt;
-        pos_y_integral += err_py * dt;
-        pos_x_integral = constrain(pos_x_integral, -3.0f, 3.0f);
-        pos_y_integral = constrain(pos_y_integral, -3.0f, 3.0f);
-      } else {
-        pos_x_integral = 0.0f;
-        pos_y_integral = 0.0f;
-      }
-
-      ax_cmd = (pos_kp * err_px) + (pos_ki * pos_x_integral) - (pos_kd * vx_c_filtered);
-      ay_cmd = (pos_kp * err_py) + (pos_ki * pos_y_integral) - (pos_kd * vy_c_filtered);
-
-      // dt recording for xy position loop
-      unsigned long now_us = micros();
-      if (last_xy_micros == 0) last_xy_micros = now_us;
-      dt_xy_interval_us = now_us - last_xy_micros;
-      last_xy_micros = now_us;
-
-      // 5. Form Target Vehicle Attitude Vector in Earth NWU Frame
-      const float g = 9.81f;
-      float t_e_x = ax_cmd;
-      float t_e_y = ay_cmd;
-      float t_e_z = g;
-
-      float norm_t_e = sqrtf(t_e_x * t_e_x + t_e_y * t_e_y + t_e_z * t_e_z);
-      if (norm_t_e > 0.0f) {
-        t_e_x /= norm_t_e;
-        t_e_y /= norm_t_e;
-        t_e_z /= norm_t_e;
-      }
-
-      // 6. Rotate Target Thrust Vector into Body-Fixed Frame via R_BW^T
-      float t_b_x = R00 * t_e_x + R10 * t_e_y + R20 * t_e_z;
-      float t_b_y = R01 * t_e_x + R11 * t_e_y + R21 * t_e_z;
-      float t_b_z = R02 * t_e_x + R12 * t_e_y + R22 * t_e_z;
-
-      // 7. Calculate Body-Fixed Target Attitude Angles (degrees)
-      target_pitch_deg = atan2f(t_b_x, t_b_z) * (180.0f / PI);
-      target_yaw_deg   = - atan2f(t_b_y, t_b_z) * (180.0f / PI);
-
-      // 8. Inner Attitude Loop Error & Derivative Terms
-      float pitch_err = target_pitch_deg - pitch_deg;
-      float yaw_err   = target_yaw_deg - yaw_deg;
-
-      pitch_integral += pitch_err * dt;
-      yaw_integral   += yaw_err * dt;
-      pitch_integral = constrain(pitch_integral, -15.0f, 15.0f);
-      yaw_integral   = constrain(yaw_integral, -15.0f, 15.0f);
-
-      float pitch_d_raw = (pitch_err - prev_pitch_err) / dt;
-      float yaw_d_raw   = (yaw_err - prev_yaw_err) / dt;
-      prev_pitch_err = pitch_err;
-      prev_yaw_err   = yaw_err;
-
-      pitch_d_filtered += d_lpf_alpha * (pitch_d_raw - pitch_d_filtered);
-      yaw_d_filtered   += d_lpf_alpha * (yaw_d_raw - yaw_d_filtered);
-
-      // dt recording for attitude loop
-      unsigned long now_us_tvc = micros();
-      if (last_tvc_micros == 0) last_tvc_micros = now_us_tvc;
-      dt_tvc_interval_us = now_us_tvc - last_tvc_micros;
-      last_tvc_micros = now_us_tvc;
-
-      // 9. Inner TVC PID Commands
-      float pitch_output_deg = (tvc_kp * pitch_err) + (tvc_ki * pitch_integral) + (tvc_kd * pitch_d_filtered);
-      float yaw_output_deg   = (tvc_kp * yaw_err)   + (tvc_ki * yaw_integral)   + (tvc_kd * yaw_d_filtered);
-
-      float max_gimbal_deg = 20.0f;
-      pitch_output_deg = constrain(pitch_output_deg, -max_gimbal_deg, max_gimbal_deg);
-      yaw_output_deg   = constrain(yaw_output_deg, -max_gimbal_deg, max_gimbal_deg);
-
-      // 10. Inverse Kinematics & Servo Actuation
-      float desired_gimbal_pitch_rad = - pitch_output_deg * (PI / 180.0f);
-      float desired_gimbal_yaw_rad   = yaw_output_deg * (PI / 180.0f);
-
-      float servo_phi_deg = 0.0f;
-      float servo_theta_deg = 0.0f;
-      calculateInverseKinematics(desired_gimbal_pitch_rad, desired_gimbal_yaw_rad, servo_phi_deg, servo_theta_deg);
-
-      int pitch_us = servo_center_us + (int)(servo_phi_deg * 11.111f);
-      int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
-
-      // Stop/center servo commands if altitude is below CoM_height + 0.03m
-      if (kalman.x[2] < (CoM_height + 0.02f)) {
-        pitch_us = servo_center_us;
-        yaw_us = servo_center_us;
-      }
-
-      pitchServo.writeMicroseconds(pitch_us);
-      yawServo.writeMicroseconds(yaw_us);
-
-      // 11. Altitude & Roll PID Pipeline (Differential ESC Throttle)
-      float current_alt = kalman.x[2];
-      float alt_error = target_altitude - current_alt;
-
-      roll_integral += roll_deg * dt;
-      alt_integral  += alt_error * dt;
-      roll_integral = constrain(roll_integral, -15.0f, 15.0f);
-      alt_integral  = constrain(alt_integral, -100.0f, 100.0f);
-
-      float roll_d_raw = (roll_deg - prev_roll_deg) / dt;
-      float alt_d_raw  = (alt_error - prev_alt_error) / dt;
-      prev_roll_deg = roll_deg;
-      prev_alt_error = alt_error;
-
-      roll_d_filtered += d_lpf_alpha * (roll_d_raw - roll_d_filtered);
-      alt_d_filtered  += d_lpf_alpha * (alt_d_raw - alt_d_filtered);
-
-      // dt recording for altitude loop
-      unsigned long now_us_esc = micros();
-      if (last_esc_micros == 0) last_esc_micros = now_us_esc;
-      dt_esc_interval_us = now_us_esc - last_esc_micros;
-      last_esc_micros = now_us_esc;
-
-      float roll_output = constrain((roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered),-100,100);
-      float alt_output  = (alt_kp * alt_error) + (alt_ki * alt_integral)  + (alt_kd * alt_d_filtered);
-
-      int base_throttle_us = hover_throttle_us + (int)alt_output;
-      base_throttle_us = constrain(base_throttle_us, 1000, max_throttle_us);
-
-      escTop_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
-      escBot_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
-
-      if (t > 6.0f) {
-        escTop_us = 1000;
-        escBot_us = 1000;
-      } 
-
-      // Track if altitude has breached CoM + 0.05 after taking off
-      if (has_taken_off && kalman.x[2] > (CoM_height + 0.05f)) {
-        has_reached_altitude_peak = true;
-      }
-
-      // Trigger lock if altitude drops back below CoM + 0.05 after reaching the peak
-      if (has_reached_altitude_peak && kalman.x[2] < (CoM_height + 0.05f)) {
-        post_flight_lock = true;
-      }
-
-      // Force ESC outputs to 1000 µs if post-flight lock is active
-      if (post_flight_lock) {
-        escTop_us = 1000;
-        escBot_us = 1000;
-      }
-
-      escTop.writeMicroseconds(escTop_us);
-      escBot.writeMicroseconds(escBot_us);
-
-    }
-
-    // 2. Read DPS310 Barometer
-    sensors_event_t temp_event, pressure_event;
-    if (dps.getEvents(&temp_event, &pressure_event)) {
+      unsigned long now_micros = micros();
+        
+      if (prev_imu_time == 0) prev_imu_time = now_micros;
       
-      float delta_temp = temp_event.temperature - baselineTemp;
-      float comp_pressure = pressure_event.pressure + (delta_temp * tempCompCoef);
-      
-      baro_alt = 44330.0f * (1.0f - pow(comp_pressure / baselinePressure, 0.190295f));
-      
-      //kalman.updateAltitude(baro_alt);
-    }
+      float dt = (now_micros - prev_imu_time) * 1e-6f;
+      prev_imu_time = now_micros;
 
-    // 2. Gate telemetry output to 50 Hz non-blocking
-    unsigned long current_micros = micros();
-    if (current_micros - last_telemetry_time >= TELEMETRY_INTERVAL_US) {
-      last_telemetry_time = current_micros;
-      
-      // Only attempt to transmit if buffer is clear
-      if (Serial && Serial.availableForWrite() >= 128) {
-        // --- TELEMETRY SERIAL PRINT (CSV FORMAT) ---
-        Serial.print(t);                Serial.print(",");
+      if (dt > 0.0001f) {
+        // ... (existing kinematic, outer position, TVC, and altitude/roll PID calculations using current_alt)
 
-        // Quaternions (w, x, y, z, NWU body fixed frame)
-        Serial.print(qw);                Serial.print(",");
-        Serial.print(qx);                Serial.print(",");
-        Serial.print(qy);                Serial.print(",");
-        Serial.print(qz);                Serial.print(",");
+        
 
-        // Orientation Angles
-        Serial.print(pitch_deg);         Serial.print(",");
-        Serial.print(yaw_deg);           Serial.print(",");
-        Serial.print(roll_deg);          Serial.print(",");
+        // --- ACCELERATION & KALMAN 
+        float accel_x = -myIMU.getLinAccelZ(); 
+        float accel_y = myIMU.getLinAccelY();
+        float accel_z = myIMU.getLinAccelX();
 
-        // Angular Rates
-        Serial.print(pitch_d_filtered);  Serial.print(",");
-        Serial.print(yaw_d_filtered);    Serial.print(",");
-        Serial.print(roll_d_filtered);   Serial.print(",");
+        imu_vel += accel_z * dt;
+        imu_alt += imu_vel * dt + 0.5f * accel_z * dt * dt;
 
-        // Kalman Filtered 1D Altitude (meters)
-        Serial.print(kalman.x[2], 4);    Serial.print(",");
+        // 1. Fetch raw quaternions from BNO085
+        float raw_qw = myIMU.getQuatReal();
+        float raw_qx = myIMU.getQuatI();
+        float raw_qy = myIMU.getQuatJ();
+        float raw_qz = myIMU.getQuatK();
 
-        // Top & Bottom Motor Pulse Widths
-        Serial.print(escTop_us);         Serial.print(",");
-        Serial.print(escBot_us);         Serial.print(",");
+        // 2. Define the mounting correction quaternion inverse (q_mount^-1)
+        // Corrects the static -90 deg Y-axis pitch offset from vertical mounting
+        const float m_w =  0.7071068f;
+        const float m_x =  0.0f;
+        const float m_y =  0.7071068f;
+        const float m_z =  0.0f;
 
-        // Servo Command Angles
-        Serial.print(pitchServo.readMicroseconds()); Serial.print(",");
-        Serial.print(yawServo.readMicroseconds());   Serial.print(",");
+        // 3. Perform Right-Multiplication (Local Body Frame Rotation): q_body = q_raw * q_mount
+        // Optimized Hamilton product where m_x = 0 and m_z = 0
+        float qw = raw_qw * m_w - raw_qy * m_y;
+        float qx = raw_qx * m_w - raw_qz * m_y;
+        float qy = raw_qw * m_y + raw_qy * m_w;
+        float qz = raw_qx * m_y + raw_qz * m_w;
 
-        // X and Y positions
-        Serial.print(px_c, 4);           Serial.print(",");
-        Serial.print(py_c, 4);           Serial.print(",");
+        // 4. Normalize the result to prevent numerical drift in PID
+        float norm = sqrtf(qw * qw + qx * qx + qy * qy + qz * qz);
+        if (norm > 0.0f) {
+            qw /= norm;
+            qx /= norm;
+            qy /= norm;
+            qz /= norm;
+        }
 
-        Serial.print(target_pitch_deg, 4); Serial.print(",");
-        Serial.print(target_yaw_deg, 4);   Serial.print(",");
-        Serial.print(target_altitude, 4);  Serial.print(",");
+        kalman.predict(accel_x, accel_y, accel_z, dt, qw, qx, qy, qz);
 
-        // Amended execution interval times (microseconds between runs)
-        Serial.print(dt_xy_interval_us);   Serial.print(",");
-        Serial.print(dt_tvc_interval_us);  Serial.print(",");
-        Serial.print(dt_esc_interval_us);  Serial.print(",");
+        // 5. Retrieve gyro rates from imu, NWU correction from board mount orientation applied
+        float wx = -myIMU.getGyroZ();
+        float wy = myIMU.getGyroY();
+        float wz = myIMU.getGyroX();
 
-        // Battery stats
-        Serial.print(battery_voltage, 2);  Serial.print(",");
-        Serial.print(battery_current, 2);  Serial.print(",");
-        Serial.println(battery_power, 2);
+        // With the mounting correction applied, the quaternion (qw, qx, qy, qz)
+        // now represents a sensor sitting perfectly flat. Z+ is the vertical axis.
+        
+        float sin_roll = 2.0f * (qw * qz + qx * qy);
+        float cos_roll = 1.0f - 2.0f * (qy * qy + qz * qz);
+        float roll_rad = atan2(sin_roll, cos_roll);
 
-        // MTF01P debug line
-        Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
-                    tof_distance_m, tof_strength, tof_precision, 
-                    flow_vel_x_m_s, flow_vel_y_m_s, flow_quality);
+        float sin_pitch = 2.0f * (qw * qy - qz * qx);
+        float pitch_rad;
+        if (abs(sin_pitch) >= 1.0f) {
+            pitch_rad = copysign(PI / 2.0f, sin_pitch); // Clamping failsafe for floating-point bounds
+        } else {
+            pitch_rad = asin(sin_pitch);
+        }
+
+        float sin_yaw = 2.0f * (qw * qx + qy * qz);
+        float cos_yaw = 1.0f - 2.0f * (qx * qx + qy * qy);
+        float yaw_rad = atan2(sin_yaw, cos_yaw); 
+
+        // Convert to degrees for telemetry and PID controller inputs
+        roll_deg  = roll_rad  * (180.0f / PI); // Z
+        pitch_deg = pitch_rad * (180.0f / PI); // Y
+        yaw_deg   = yaw_rad   * (180.0f / PI); // X
+
+
+        // optical flow data parsing
+        mavlink_message_t msg;
+        mavlink_status_t status;
+
+        // Declare optical flow rate variables (static so their values persist across serial reads)
+        static float flow_rad_s_x = 0.0f;
+        static float flow_rad_s_y = 0.0f;
+
+        // Read all available data on Serial4 without blocking
+        while (Serial4.available() > 0) {
+          uint8_t c = Serial4.read();
+
+          // Pass each byte to the MAVLink decoder
+          if (mavlink_parse_char(MAVLINK_COMM_0, c, &msg, &status)) {
+            
+            // Optional filter: If you specifically want to ignore other sensors 
+            // and only listen to your Component ID 88, uncomment the line below:
+            // if (msg.compid != 88) continue; 
+
+            switch (msg.msgid) {
+                
+              // 1. Parse Optical Flow Velocity & Quality (#100)
+              case MAVLINK_MSG_ID_OPTICAL_FLOW: {
+                mavlink_optical_flow_t flow;
+                mavlink_msg_optical_flow_decode(&msg, &flow);
+                
+                flow_quality = flow.quality; // Flow confidence (0 - 255)
+
+                // Fallback logic: If float flow_comp_m_x is 0, read integer flow_x / flow_y
+                // mapping from sensor axes to NWU body axes: X+ --> Y-, Y+ --> X+
+                if (abs(flow.flow_comp_m_x) > 0.001f || abs(flow.flow_comp_m_y) > 0.001f) {
+                    flow_vel_x_m_s = flow.flow_comp_m_y;
+                    flow_vel_y_m_s = flow.flow_comp_m_x;
+                } else {
+                    // Convert integer flow delta to velocity (scale factor of 1000.0f)
+                    flow_vel_x_m_s = (float)flow.flow_y / 1000.0f; 
+                    flow_vel_y_m_s = (float)flow.flow_x / 1000.0f;
+                }
+                // Convert ground linear velocity (m/s) to angular flow rate (rad/s):
+                // omega_flow = v / D
+                // if (tof_distance_m > 0.05f) {
+                //     flow_rad_s_x = flow_vel_x_m_s / tof_distance_m;
+                //     flow_rad_s_y = flow_vel_y_m_s / tof_distance_m;
+                // } else {
+                //     flow_rad_s_x = 0.0f;
+                //     flow_rad_s_y = 0.0f;
+                // }
+                kalman.updateFlow(flow_vel_x_m_s, flow_vel_y_m_s, 
+                        wx, wy, wz, 
+                        qw, qx, qy, qz, 
+                        tof_distance_m);
+                break;
+              }
+
+              // 2. Parse ToF Distance, Strength & Precision (#132)
+              case MAVLINK_MSG_ID_DISTANCE_SENSOR: {
+                mavlink_distance_sensor_t dist;
+                mavlink_msg_distance_sensor_decode(&msg, &dist);
+                
+                // Convert current_distance from cm to meters
+                tof_distance_m = (float)dist.current_distance / 100.0f; 
+                
+                // Extract ToF Signal Quality & Precision
+                tof_strength  = dist.signal_quality; // Valid if MAVLink v2 packet
+                tof_precision = dist.covariance;     // 0 if module does not transmit variance
+                kalman.updateAltitude(tof_distance_m, qw, qx, qy, qz);
+                break;
+              }
+            }
+          }
+
+
+        }
+
+        if (dt > 0.0001f) {
+          // 1. Compute current Body-to-Earth Rotation Matrix components from active quaternions
+          float qx2 = qx * qx, qy2 = qy * qy, qz2 = qz * qz;
+
+          R00 = 1.0f - 2.0f * (qy2 + qz2);
+          R01 = 2.0f * (qx * qy - qw * qz);
+          R02 = 2.0f * (qx * qz + qw * qy);
+
+          R10 = 2.0f * (qx * qy + qw * qz);
+          R11 = 1.0f - 2.0f * (qx2 + qz2);
+          R12 = 2.0f * (qy * qz - qw * qx);
+
+          // Check ESC command threshold to detect initial launch
+          bool throttle_active = (escTop_us > 1100 || escBot_us > 1100);
+          if (current_alt > CoM_height + 0.05) {
+            has_taken_off = true; // Permanently latch takeoff state
+          }
+
+          // Pre-flight clamp: ONLY runs prior to the very first takeoff
+          if (!has_taken_off) {
+            // 1. Hold Kalman planar position and velocity states at zero while on launchpad
+            kalman.x[0] = 0.0f; // px
+            kalman.x[1] = 0.0f; // py
+            kalman.x[3] = 0.0f; // vx
+            kalman.x[4] = 0.0f; // vy
+
+            // 2. Latch resting ground tilt offset as baseline bias
+            px_bias = -delta_p_x;
+            py_bias = -delta_p_y;
+          }
+
+          // Ground intersection point of the tilted optical axis relative to CoM:
+          float p_x_tilted = R00 * SENSOR_OFFSET_X + R01 * SENSOR_OFFSET_Y + R02 * (SENSOR_OFFSET_Z - tof_distance_m);
+          float p_y_tilted = R10 * SENSOR_OFFSET_X + R11 * SENSOR_OFFSET_Y + R12 * (SENSOR_OFFSET_Z - tof_distance_m);
+
+          // Attitude-induced position shift relative to zero-tilt level attitude
+          delta_p_x = p_x_tilted - SENSOR_OFFSET_X;
+          delta_p_y = p_y_tilted - SENSOR_OFFSET_Y;
+
+          //px_c = kalman.x[0] - delta_p_x - px_bias;
+          //py_c = kalman.x[1] - delta_p_y - py_bias;
+
+          unsigned long t_xy_start = micros();
+
+          // 2. Corrected Earth-fixed Position States with Direct In-Place LPF
+          float raw_px_c = kalman.x[0] - delta_p_x - px_bias;
+          float raw_py_c = kalman.x[1] - delta_p_y - py_bias;
+
+          px_c += pos_lpf_alpha * (raw_px_c - px_c);
+          py_c += pos_lpf_alpha * (raw_py_c - py_c);
+
+          // 3. Numerical Derivative of px_c and py_c (avoiding kalman.x[3] / x[4])
+          float vx_c_raw = (px_c - prev_px_c) / dt;
+          float vy_c_raw = (py_c - prev_py_c) / dt;
+          prev_px_c = px_c;
+          prev_py_c = py_c;
+
+          vx_c_filtered += d_lpf_alpha * (vx_c_raw - vx_c_filtered);
+          vy_c_filtered += d_lpf_alpha * (vy_c_raw - vy_c_filtered);
+
+          // 4. Outer Position PID Control Loops (Earth NWU Frame)
+          float err_px = target_px - px_c;
+          float err_py = target_py - py_c;
+
+          if (has_taken_off) {
+            pos_x_integral += err_px * dt;
+            pos_y_integral += err_py * dt;
+            pos_x_integral = constrain(pos_x_integral, -3.0f, 3.0f);
+            pos_y_integral = constrain(pos_y_integral, -3.0f, 3.0f);
+          } else {
+            pos_x_integral = 0.0f;
+            pos_y_integral = 0.0f;
+          }
+
+          ax_cmd = (pos_kp * err_px) + (pos_ki * pos_x_integral) - (pos_kd * vx_c_filtered);
+          ay_cmd = (pos_kp * err_py) + (pos_ki * pos_y_integral) - (pos_kd * vy_c_filtered);
+
+          // dt recording for xy position loop
+          unsigned long now_us = micros();
+          if (last_xy_micros == 0) last_xy_micros = now_us;
+          dt_xy_interval_us = now_us - last_xy_micros;
+          last_xy_micros = now_us;
+
+          // 5. Form Target Vehicle Attitude Vector in Earth NWU Frame
+          const float g = 9.81f;
+          float t_e_x = ax_cmd;
+          float t_e_y = ay_cmd;
+          float t_e_z = g;
+
+          float norm_t_e = sqrtf(t_e_x * t_e_x + t_e_y * t_e_y + t_e_z * t_e_z);
+          if (norm_t_e > 0.0f) {
+            t_e_x /= norm_t_e;
+            t_e_y /= norm_t_e;
+            t_e_z /= norm_t_e;
+          }
+
+          // 6. Rotate Target Thrust Vector into Body-Fixed Frame via R_BW^T
+          float t_b_x = R00 * t_e_x + R10 * t_e_y + R20 * t_e_z;
+          float t_b_y = R01 * t_e_x + R11 * t_e_y + R21 * t_e_z;
+          float t_b_z = R02 * t_e_x + R12 * t_e_y + R22 * t_e_z;
+
+          // 7. Calculate Body-Fixed Target Attitude Angles (degrees)
+          target_pitch_deg = atan2f(t_b_x, t_b_z) * (180.0f / PI);
+          target_yaw_deg   = - atan2f(t_b_y, t_b_z) * (180.0f / PI);
+
+          // 8. Inner Attitude Loop Error & Derivative Terms
+          float pitch_err = target_pitch_deg - pitch_deg;
+          float yaw_err   = target_yaw_deg - yaw_deg;
+
+          pitch_integral += pitch_err * dt;
+          yaw_integral   += yaw_err * dt;
+          pitch_integral = constrain(pitch_integral, -15.0f, 15.0f);
+          yaw_integral   = constrain(yaw_integral, -15.0f, 15.0f);
+
+          float pitch_d_raw = (pitch_err - prev_pitch_err) / dt;
+          float yaw_d_raw   = (yaw_err - prev_yaw_err) / dt;
+          prev_pitch_err = pitch_err;
+          prev_yaw_err   = yaw_err;
+
+          pitch_d_filtered += d_lpf_alpha * (pitch_d_raw - pitch_d_filtered);
+          yaw_d_filtered   += d_lpf_alpha * (yaw_d_raw - yaw_d_filtered);
+
+          // dt recording for attitude loop
+          unsigned long now_us_tvc = micros();
+          if (last_tvc_micros == 0) last_tvc_micros = now_us_tvc;
+          dt_tvc_interval_us = now_us_tvc - last_tvc_micros;
+          last_tvc_micros = now_us_tvc;
+
+          // 9. Inner TVC PID Commands
+          float pitch_output_deg = (tvc_kp * pitch_err) + (tvc_ki * pitch_integral) + (tvc_kd * pitch_d_filtered);
+          float yaw_output_deg   = (tvc_kp * yaw_err)   + (tvc_ki * yaw_integral)   + (tvc_kd * yaw_d_filtered);
+
+          float max_gimbal_deg = 20.0f;
+          pitch_output_deg = constrain(pitch_output_deg, -max_gimbal_deg, max_gimbal_deg);
+          yaw_output_deg   = constrain(yaw_output_deg, -max_gimbal_deg, max_gimbal_deg);
+
+          // 10. Inverse Kinematics & Servo Actuation
+          float desired_gimbal_pitch_rad = - pitch_output_deg * (PI / 180.0f);
+          float desired_gimbal_yaw_rad   = yaw_output_deg * (PI / 180.0f);
+
+          float servo_phi_deg = 0.0f;
+          float servo_theta_deg = 0.0f;
+          calculateInverseKinematics(desired_gimbal_pitch_rad, desired_gimbal_yaw_rad, servo_phi_deg, servo_theta_deg);
+
+          int pitch_us = servo_center_us + (int)(servo_phi_deg * 11.111f);
+          int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
+
+          // Stop/center servo commands if altitude is below CoM_height + 0.03m
+          if (current_alt < (CoM_height + 0.02f)) {
+            pitch_us = servo_center_us;
+            yaw_us = servo_center_us;
+          }
+
+          pitchServo.writeMicroseconds(pitch_us);
+          yawServo.writeMicroseconds(yaw_us);
+
+          // 11. Altitude & Roll PID Pipeline (Differential ESC Throttle)
+          float alt_error = target_altitude - current_alt;
+
+          roll_integral += roll_deg * dt;
+          alt_integral  += alt_error * dt;
+          roll_integral = constrain(roll_integral, -15.0f, 15.0f);
+          alt_integral  = constrain(alt_integral, -100.0f, 100.0f);
+
+          float roll_d_raw = (roll_deg - prev_roll_deg) / dt;
+          float alt_d_raw  = (alt_error - prev_alt_error) / dt;
+          prev_roll_deg = roll_deg;
+          prev_alt_error = alt_error;
+
+          roll_d_filtered += d_lpf_alpha * (roll_d_raw - roll_d_filtered);
+          alt_d_filtered  += d_lpf_alpha * (alt_d_raw - alt_d_filtered);
+
+          // dt recording for altitude loop
+          unsigned long now_us_esc = micros();
+          if (last_esc_micros == 0) last_esc_micros = now_us_esc;
+          dt_esc_interval_us = now_us_esc - last_esc_micros;
+          last_esc_micros = now_us_esc;
+
+          float roll_output = constrain((roll_kp * roll_deg) + (roll_ki * roll_integral) + (roll_kd * roll_d_filtered),-100,100);
+          float alt_output  = (alt_kp * alt_error) + (alt_ki * alt_integral)  + (alt_kd * alt_d_filtered);
+
+          int base_throttle_us = hover_throttle_us + (int)alt_output;
+          base_throttle_us = constrain(base_throttle_us, 1000, max_throttle_us);
+
+          escTop_us = constrain(base_throttle_us - (int)roll_output, 1000, max_throttle_us);
+          escBot_us = constrain(base_throttle_us + (int)roll_output, 1000, max_throttle_us);
+
+          if (t > 6.0f) {
+            escTop_us = 1000;
+            escBot_us = 1000;
+          } 
+
+          // Track if altitude has breached CoM + 0.05 after taking off
+          if (has_taken_off && current_alt > (CoM_height + 0.05f)) {
+            has_reached_altitude_peak = true;
+          }
+
+          // Trigger lock if altitude drops back below CoM + 0.05 after reaching the peak
+          if (has_reached_altitude_peak && current_alt < (CoM_height + 0.05f)) {
+            post_flight_lock = true;
+          }
+
+          // Force ESC outputs to 1000 µs if post-flight lock is active
+          if (post_flight_lock) {
+            escTop_us = 1000;
+            escBot_us = 1000;
+          }
+
+          escTop.writeMicroseconds(escTop_us);
+          escBot.writeMicroseconds(escBot_us);
+
+        }
+
+        // 2. Read DPS310 Barometer
+        sensors_event_t temp_event, pressure_event;
+        if (dps.getEvents(&temp_event, &pressure_event)) {
+          
+          float delta_temp = temp_event.temperature - baselineTemp;
+          float comp_pressure = pressure_event.pressure + (delta_temp * tempCompCoef);
+          
+          baro_alt = 44330.0f * (1.0f - pow(comp_pressure / baselinePressure, 0.190295f));
+          
+          //kalman.updateAltitude(baro_alt);
+        }
+
+        // 2. Gate telemetry output to 50 Hz non-blocking
+        unsigned long current_micros = micros();
+        if (current_micros - last_telemetry_time >= TELEMETRY_INTERVAL_US) {
+          last_telemetry_time = current_micros;
+          
+          // Only attempt to transmit if buffer is clear
+          if (Serial && Serial.availableForWrite() >= 128) {
+            // --- TELEMETRY SERIAL PRINT (CSV FORMAT) ---
+            Serial.print(t);                Serial.print(",");
+
+            // Quaternions (w, x, y, z, NWU body fixed frame)
+            Serial.print(qw);                Serial.print(",");
+            Serial.print(qx);                Serial.print(",");
+            Serial.print(qy);                Serial.print(",");
+            Serial.print(qz);                Serial.print(",");
+
+            // Orientation Angles
+            Serial.print(pitch_deg);         Serial.print(",");
+            Serial.print(yaw_deg);           Serial.print(",");
+            Serial.print(roll_deg);          Serial.print(",");
+
+            // Angular Rates
+            Serial.print(pitch_d_filtered);  Serial.print(",");
+            Serial.print(yaw_d_filtered);    Serial.print(",");
+            Serial.print(roll_d_filtered);   Serial.print(",");
+
+            // Kalman Filtered Altitude (meters)
+            Serial.print(current_alt, 4);    Serial.print(",");
+
+            // Top & Bottom Motor Pulse Widths
+            Serial.print(escTop_us);         Serial.print(",");
+            Serial.print(escBot_us);         Serial.print(",");
+
+            // Servo Command Angles
+            Serial.print(pitchServo.readMicroseconds()); Serial.print(",");
+            Serial.print(yawServo.readMicroseconds());   Serial.print(",");
+
+            // X and Y positions
+            Serial.print(px_c, 4);           Serial.print(",");
+            Serial.print(py_c, 4);           Serial.print(",");
+
+            Serial.print(target_pitch_deg, 4); Serial.print(",");
+            Serial.print(target_yaw_deg, 4);   Serial.print(",");
+            Serial.print(target_altitude, 4);  Serial.print(",");
+
+            // Amended execution interval times (microseconds between runs)
+            Serial.print(dt_xy_interval_us);   Serial.print(",");
+            Serial.print(dt_tvc_interval_us);  Serial.print(",");
+            Serial.print(dt_esc_interval_us);  Serial.print(",");
+
+            // Battery stats
+            Serial.print(battery_voltage, 2);  Serial.print(",");
+            Serial.print(battery_current, 2);  Serial.print(",");
+            Serial.println(battery_power, 2);
+
+            // MTF01P debug line
+            Serial.printf("Dist: %.2fm (Str: %d, Prec: %d) | VelX: %.3fm/s, VelY: %.3fm/s (Flow Qual: %d)\n",
+                        tof_distance_m, tof_strength, tof_precision, 
+                        flow_vel_x_m_s, flow_vel_y_m_s, flow_quality);
+          }
+        }
       }
     }
-
   }
 }
