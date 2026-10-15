@@ -56,7 +56,7 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- OUTER POSITION PID TUNING & TARGETS ---
-float pos_kp = 2.5f;        // Position proportional gain
+float pos_kp = 1.5f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
 float pos_kd = 0.6f;        // Position derivative gain
 
@@ -133,7 +133,7 @@ float alt_d_filtered = 0.0f;
 
 float target_altitude = 1.0f; // Target altitude in meters
 int hover_throttle_us = 1800; // Base throttle needed to maintain hover
-int max_throttle_us = 1960;   // Maximum throttle limit for safety during testing
+int max_throttle_us = 2000;   // Maximum throttle limit for safety during testing
 
 unsigned long last_telemetry_time = 0;
 const unsigned long TELEMETRY_INTERVAL_US = 20000; // 50 Hz (20 ms)
@@ -444,7 +444,7 @@ unsigned long prev_imu_time = 0;
 // Polynomial function to calculate expected thrust (kg) for the 9047 prop from voltage (V) and throttle fraction (0.0 to 1.0)
 float thrust(float voltage, float throttle_fraction) {
     float th = constrain(throttle_fraction, 0.0f, 1.0f);
-    float t_val = (voltage / 12.6f) * (2.48f * th - 0.51f);
+    float t_val = (voltage / 12.6f) * (2.48f * th - 0.8f); // note: manufacturer constant is 0.51, now changed to 0.8 
     return t_val;
 }
 
@@ -453,7 +453,7 @@ float throttle_cmd(float target_thrust_kg, float voltage) {
     if (voltage < 5.0f) voltage = 12.6f; // Failsafe fallback voltage
     
     // Algebraically inverted from: thrust = (voltage / 12.6f) * (2.48f * th - 0.51f)
-    float th = ((target_thrust_kg * 12.6f / voltage) + 0.51f) / 2.48f;
+    float th = ((target_thrust_kg * 12.6f / voltage) + 0.8f) / 2.48f;
     
     return constrain(th, 0.0f, 1.0f);
 }
@@ -1114,10 +1114,10 @@ void loop() {
           int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
 
           // Stop/center servo commands if altitude is below CoM_height + 0.03m
-          if (current_alt < (CoM_height + 0.02f)) {
-            pitch_us = servo_center_us;
-            yaw_us = servo_center_us;
-          }
+          //if (current_alt < (CoM_height + 0.02f)) {   // 15-10 note: just at takeoff servo lock prevents vehicle from controlling attitude, test with this removed
+          //  pitch_us = servo_center_us;
+          //  yaw_us = servo_center_us;
+          //}
 
           pitchServo.writeMicroseconds(pitch_us);
           yawServo.writeMicroseconds(yaw_us);
@@ -1159,7 +1159,7 @@ void loop() {
           } 
 
           // Track if altitude has breached CoM + 0.05 after taking off
-          if (has_taken_off && current_alt > (CoM_height + 0.05f)) {
+          if (has_taken_off && current_alt > (CoM_height + 0.10f)) {
             has_reached_altitude_peak = true;
           }
 
