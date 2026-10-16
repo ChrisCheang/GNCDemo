@@ -56,9 +56,9 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- OUTER POSITION PID TUNING & TARGETS ---
-float pos_kp = 1.5f;        // Position proportional gain
+float pos_kp = 10.0f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
-float pos_kd = 0.6f;        // Position derivative gain
+float pos_kd = 2.0f;        // Position derivative gain
 
 float target_px = 0.0f;     // Earth-fixed X target position (m)
 float target_py = 0.0f;     // Earth-fixed Y target position (m)
@@ -75,16 +75,17 @@ float prev_pitch_err = 0.0f;
 float prev_yaw_err = 0.0f;
 
 // --- TVC PID TUNING & LIMITS ---
-float tvc_kp = 0.3f;       // Proportional gain
+float tvc_kp = 0.15f;       // Proportional gain
 float tvc_ki = 0.0f;       // Integral gain
-float tvc_kd = 0.15f;      // Derivative gain
+float tvc_kd = 0.07f;      // Derivative gain
 float d_lpf_alpha = 0.02f;  // Low pass filter factor for derivative (0.0 to 1.0)
 
-int servo_center_us = 1500; // Center position in microseconds
+int servo_center_us_pitch = 1500; // Center position in microseconds
+int servo_center_us_yaw = 1485;
 int servo_limit_us = 333;   // Max deflection from center (~30 deg = 333us)
 
-int pitch_us = servo_center_us;
-int yaw_us = servo_center_us;
+int pitch_us = servo_center_us_pitch;
+int yaw_us = servo_center_us_yaw;
 
 // TVC PID State Variables
 float roll_deg  = 0.0; // Z
@@ -100,9 +101,9 @@ float yaw_d_filtered = 0.0f;
 bool pid_first_run = true;
 
 // --- ROLL PID TUNING & LIMITS ---
-float roll_kp = 1.0f;
+float roll_kp = 3.0f;
 float roll_ki = 0.0f;
-float roll_kd = 0.5f;
+float roll_kd = 1.5f;
 
 float roll_integral = 0.0f;
 float prev_roll_deg = 0.0f;
@@ -120,9 +121,9 @@ float qy_init = 0.0f;
 float qz_init = 0.0f;
 
 // --- ALTITUDE PID TUNING & LIMITS ---
-float alt_kp = 820.0f;
-float alt_ki = 250.0f;
-float alt_kd = 100.0f;
+float alt_kp = 850.0f; //820
+float alt_ki = 250.0f; //250
+float alt_kd = 200.0f;  //100
 
 bool calibrate_esc = false; // Set to true before uploading if you need to recalibrate the ESCs
 
@@ -198,6 +199,10 @@ unsigned long last_ina_micros = 0; // Timer for rate-limiting INA228 I2C reads
 unsigned long dt_xy_interval_us = 0;
 unsigned long dt_tvc_interval_us = 0;
 unsigned long dt_esc_interval_us = 0;
+
+// --- Cascaded Loop Timing ---
+unsigned long last_pos_loop_micros = 0;
+const unsigned long POS_LOOP_INTERVAL_US = 20000; // 50 Hz Outer Position Loop
 
 BNO080 myIMU;
 Adafruit_DPS310 dps; 
@@ -532,8 +537,8 @@ void setup() {
   // 1. Setup TVC Servos
   pitchServo.attach(SERVO_PITCH_PIN);
   yawServo.attach(SERVO_YAW_PIN);
-  pitchServo.writeMicroseconds(servo_center_us);
-  yawServo.writeMicroseconds(servo_center_us);
+  pitchServo.writeMicroseconds(servo_center_us_pitch);
+  yawServo.writeMicroseconds(servo_center_us_yaw);
 
   
 
@@ -775,17 +780,17 @@ void loop() {
   if (t < 1.0f) {
     target_altitude = CoM_height;
   } 
-  else if (t < 3.0f) {
-    // Increases linearly from CoM_height to CoM_height + 0.2 over 2 seconds (t from 1 to 3)
-    target_altitude = CoM_height + 0.2f * ((t - 1.0f) / 2.0f);
+  else if (t < 2.0f) {
+    // Increases linearly from CoM_height to CoM_height + 0.2 over 1 second (t from 1 to 2)
+    target_altitude = CoM_height + 0.2f * ((t - 1.0f) / 1.0f);
   } 
-  else if (t < 4.0f) {
-    // Holds for one second (t from 3 to 4) at CoM_height + 0.5
+  else if (t < 5.0f) {
+    // Holds for 3 seconds (t from 2 to 5) at CoM_height + 0.2 (original 1s + 2s longer)
     target_altitude = CoM_height + 0.2f;
   } 
   else if (t <= 6.0f) {
-    // Decreases linearly back to CoM_height over another 2 seconds (t from 4 to 6)
-    target_altitude = (CoM_height + 0.2f) - 0.2f * ((t - 4.0f) / 2.0f);
+    // Decreases linearly back to CoM_height over 1 second (t from 5 to 6)
+    target_altitude = (CoM_height + 0.2f) - 0.2f * ((t - 5.0f) / 1.0f);
   } 
   else {
     // Hold at CoM_height after profile completion
@@ -1026,50 +1031,53 @@ void loop() {
           vx_c_filtered += d_lpf_alpha * (vx_c_raw - vx_c_filtered);
           vy_c_filtered += d_lpf_alpha * (vy_c_raw - vy_c_filtered);
 
-          // 4. Outer Position PID Control Loops (Earth NWU Frame)
-          float err_px = target_px - px_c;
-          float err_py = target_py - py_c;
+          // =========================================================
+          // 3. OUTER POSITION LOOP (Gated to 50 Hz / 20 ms)
+          // =========================================================
+          unsigned long current_micros_pos = micros();
+          if (current_micros_pos - last_pos_loop_micros >= POS_LOOP_INTERVAL_US) {
+            float pos_dt = (current_micros_pos - last_pos_loop_micros) * 1e-6f;
+            last_pos_loop_micros = current_micros_pos;
+            dt_xy_interval_us = pos_dt * 1e6f;
 
-          if (has_taken_off) {
-            pos_x_integral += err_px * dt;
-            pos_y_integral += err_py * dt;
-            pos_x_integral = constrain(pos_x_integral, -3.0f, 3.0f);
-            pos_y_integral = constrain(pos_y_integral, -3.0f, 3.0f);
-          } else {
-            pos_x_integral = 0.0f;
-            pos_y_integral = 0.0f;
+            float err_px = target_px - px_c;
+            float err_py = target_py - py_c;
+
+            if (has_taken_off) {
+              pos_x_integral += err_px * pos_dt;
+              pos_y_integral += err_py * pos_dt;
+              pos_x_integral = constrain(pos_x_integral, -3.0f, 3.0f);
+              pos_y_integral = constrain(pos_y_integral, -3.0f, 3.0f);
+            } else {
+              pos_x_integral = 0.0f;
+              pos_y_integral = 0.0f;
+            }
+
+            ax_cmd = (pos_kp * err_px) + (pos_ki * pos_x_integral) - (pos_kd * vx_c_filtered);
+            ay_cmd = (pos_kp * err_py) + (pos_ki * pos_y_integral) - (pos_kd * vy_c_filtered);
+
+            // Form Target Vehicle Attitude Vector in Earth NWU Frame
+            const float g = 9.81f;
+            float t_e_x = ax_cmd;
+            float t_e_y = ay_cmd;
+            float t_e_z = g;
+
+            float norm_t_e = sqrtf(t_e_x * t_e_x + t_e_y * t_e_y + t_e_z * t_e_z);
+            if (norm_t_e > 0.0f) {
+              t_e_x /= norm_t_e;
+              t_e_y /= norm_t_e;
+              t_e_z /= norm_t_e;
+            }
+
+            // Rotate Target Thrust Vector into Body-Fixed Frame via R_BW^T
+            float t_b_x = R00 * t_e_x + R10 * t_e_y + R20 * t_e_z;
+            float t_b_y = R01 * t_e_x + R11 * t_e_y + R21 * t_e_z;
+            float t_b_z = R02 * t_e_x + R12 * t_e_y + R22 * t_e_z;
+
+            // Calculate Body-Fixed Target Attitude Angles (degrees)
+            target_pitch_deg = atan2f(t_b_x, t_b_z) * (180.0f / PI);
+            target_yaw_deg   = -atan2f(t_b_y, t_b_z) * (180.0f / PI);
           }
-
-          ax_cmd = (pos_kp * err_px) + (pos_ki * pos_x_integral) - (pos_kd * vx_c_filtered);
-          ay_cmd = (pos_kp * err_py) + (pos_ki * pos_y_integral) - (pos_kd * vy_c_filtered);
-
-          // dt recording for xy position loop
-          unsigned long now_us = micros();
-          if (last_xy_micros == 0) last_xy_micros = now_us;
-          dt_xy_interval_us = now_us - last_xy_micros;
-          last_xy_micros = now_us;
-
-          // 5. Form Target Vehicle Attitude Vector in Earth NWU Frame
-          const float g = 9.81f;
-          float t_e_x = ax_cmd;
-          float t_e_y = ay_cmd;
-          float t_e_z = g;
-
-          float norm_t_e = sqrtf(t_e_x * t_e_x + t_e_y * t_e_y + t_e_z * t_e_z);
-          if (norm_t_e > 0.0f) {
-            t_e_x /= norm_t_e;
-            t_e_y /= norm_t_e;
-            t_e_z /= norm_t_e;
-          }
-
-          // 6. Rotate Target Thrust Vector into Body-Fixed Frame via R_BW^T
-          float t_b_x = R00 * t_e_x + R10 * t_e_y + R20 * t_e_z;
-          float t_b_y = R01 * t_e_x + R11 * t_e_y + R21 * t_e_z;
-          float t_b_z = R02 * t_e_x + R12 * t_e_y + R22 * t_e_z;
-
-          // 7. Calculate Body-Fixed Target Attitude Angles (degrees)
-          target_pitch_deg = atan2f(t_b_x, t_b_z) * (180.0f / PI);
-          target_yaw_deg   = - atan2f(t_b_y, t_b_z) * (180.0f / PI);
 
           // 8. Inner Attitude Loop Error & Derivative Terms
           float pitch_err = target_pitch_deg - pitch_deg;
@@ -1110,13 +1118,13 @@ void loop() {
           float servo_theta_deg = 0.0f;
           calculateInverseKinematics(desired_gimbal_pitch_rad, desired_gimbal_yaw_rad, servo_phi_deg, servo_theta_deg);
 
-          int pitch_us = servo_center_us + (int)(servo_phi_deg * 11.111f);
-          int yaw_us   = servo_center_us - (int)(servo_theta_deg * 11.111f);
+          int pitch_us = servo_center_us_pitch + (int)(servo_phi_deg * 11.111f);
+          int yaw_us   = servo_center_us_yaw - (int)(servo_theta_deg * 11.111f);
 
           // Stop/center servo commands if altitude is below CoM_height + 0.03m
           //if (current_alt < (CoM_height + 0.02f)) {   // 15-10 note: just at takeoff servo lock prevents vehicle from controlling attitude, test with this removed
-          //  pitch_us = servo_center_us;
-          //  yaw_us = servo_center_us;
+          //  pitch_us = servo_center_us_pitch;
+          //  yaw_us = servo_center_us_yaw;
           //}
 
           pitchServo.writeMicroseconds(pitch_us);
