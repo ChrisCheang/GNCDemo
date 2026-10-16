@@ -56,9 +56,9 @@ const float KIN_H = 43.5f;
 const float KIN_C = 54.0f;   
 
 // --- OUTER POSITION PID TUNING & TARGETS ---
-float pos_kp = 10.0f;        // Position proportional gain
+float pos_kp = 5.0f;        // Position proportional gain
 float pos_ki = 0.0f;       // Position integral gain
-float pos_kd = 2.0f;        // Position derivative gain
+float pos_kd = 3.0f;        // Position derivative gain
 
 float target_px = 0.0f;     // Earth-fixed X target position (m)
 float target_py = 0.0f;     // Earth-fixed Y target position (m)
@@ -123,7 +123,7 @@ float qz_init = 0.0f;
 // --- ALTITUDE PID TUNING & LIMITS ---
 float alt_kp = 850.0f; //820
 float alt_ki = 250.0f; //250
-float alt_kd = 200.0f;  //100
+float alt_kd = 100.0f;  //100
 
 bool calibrate_esc = false; // Set to true before uploading if you need to recalibrate the ESCs
 
@@ -777,20 +777,20 @@ void loop() {
   t = (micros() - loop_start_micros) * 1e-6f;
 
   // 2. Map target_altitude to time profile h(t)
-  if (t < 1.0f) {
+  if (t < 0.5f) {
     target_altitude = CoM_height;
   } 
-  else if (t < 2.0f) {
-    // Increases linearly from CoM_height to CoM_height + 0.2 over 1 second (t from 1 to 2)
-    target_altitude = CoM_height + 0.2f * ((t - 1.0f) / 1.0f);
+  else if (t < 1.5f) {
+    // Increases linearly from CoM_height to CoM_height + 0.2 over 1 second (t from 0.5 to 1.5)
+    target_altitude = CoM_height + 0.2f * ((t - 0.5f) / 1.0f);
   } 
-  else if (t < 5.0f) {
-    // Holds for 3 seconds (t from 2 to 5) at CoM_height + 0.2 (original 1s + 2s longer)
+  else if (t < 4.5f) {
+    // Holds for 3 seconds (t from 1.5 to 4.5) at CoM_height + 0.2
     target_altitude = CoM_height + 0.2f;
   } 
-  else if (t <= 6.0f) {
-    // Decreases linearly back to CoM_height over 1 second (t from 5 to 6)
-    target_altitude = (CoM_height + 0.2f) - 0.2f * ((t - 5.0f) / 1.0f);
+  else if (t <= 5.5f) {
+    // Decreases linearly back to CoM_height over 1 second (t from 4.5 to 5.5)
+    target_altitude = (CoM_height + 0.2f) - 0.2f * ((t - 4.5f) / 1.0f);
   } 
   else {
     // Hold at CoM_height after profile completion
