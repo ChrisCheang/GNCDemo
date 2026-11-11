@@ -14,14 +14,13 @@ MOUNTPOINT = "VRS32G"
 USERNAME = "chrischeanghk"
 PASSWORD = "hdbd6n"  # <--- INSERT YOUR EXACT SATREF PASSWORD HERE
 
-# Default fallback GGA position (Hong Kong baseline) until Teensy returns a live fix
+# Default fallback GGA position until Teensy returns a live fix
 CURRENT_GGA = "$GNGGA,133733.70,2218.478535,N,11415.591232,E,1,14,2.19,60.1,M,-0.7,M,,*5E\r\n"
 
 
 def create_ntrip_request(caster, port, mountpoint, username, password):
     """Builds the HTTP NTRIP v2 GET request with strict ASCII Basic Auth."""
     auth_str = f"{username}:{password}"
-    # Use ASCII encoding to prevent auth header byte-string formatting bugs
     auth_bytes = base64.b64encode(auth_str.encode("ascii")).decode("ascii")
 
     request = (
@@ -40,7 +39,7 @@ def main():
 
     # 1. Open Serial Connection to Teensy 4.1 on COM7
     try:
-        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.1)
+        ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=0.05)
         print(f"[SERIAL] Successfully opened {SERIAL_PORT} at {BAUD_RATE} baud.")
     except Exception as e:
         print(f"[ERROR] Failed to open serial port {SERIAL_PORT}: {e}")
@@ -51,7 +50,7 @@ def main():
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((NTRIP_CASTER, NTRIP_PORT))
-        sock.settimeout(5.0)
+        sock.settimeout(0.1)  # Non-blocking socket timeout
 
         # Send GET Request
         ntrip_req = create_ntrip_request(
@@ -68,14 +67,14 @@ def main():
 
         if "200 OK" not in response and "ICY 200 OK" not in response:
             print(
-                "[ERROR] Failed to authorize or connect to SatRef NTRIP server. Check your username/password."
+                "[ERROR] Failed to authorize or connect to SatRef NTRIP server. Check your password."
             )
             sock.close()
             ser.close()
             sys.exit(1)
 
         print(
-            "[NTRIP] Connected successfully! Streaming RTCM3 corrections to Teensy...\n"
+            "[NTRIP] Connected successfully! Streaming RTCM3 corrections...\n"
         )
 
     except Exception as e:
@@ -88,38 +87,35 @@ def main():
 
     try:
         while True:
-            # A. Read incoming RTCM3 bytes from Caster -> Write to Teensy USB Serial
+            # A. Read incoming NTRIP RTCM3 data from socket -> Forward over serial to Teensy & Print
             try:
                 data = sock.recv(2048)
                 if data:
                     ser.write(data)
                     print(
-                        f"[NTRIP -> TEENSY] Forwarded {len(data)} RTCM3 bytes",
-                        end="\r",
+                        f"[NTRIP -> SERIAL TX] Forwarded {len(data)} RTCM3 correction bytes to Teensy"
                     )
             except socket.timeout:
                 pass
 
-            # B. Read incoming lines from Teensy USB Serial -> Capture GNGGA & Print
-            if ser.in_waiting > 0:
+            # B. Read incoming lines from Teensy serial -> Print GNGGA sentences immediately when they arrive
+            while ser.in_waiting > 0:
                 line = ser.readline().decode("utf-8", errors="ignore").strip()
                 if line:
                     if "$GNGGA" in line or "$GPGGA" in line:
                         CURRENT_GGA = line + "\r\n"
-                        print(
-                            f"\n[TEENSY -> PYTHON GNGGA] Captured live fix: {line}"
-                        )
+                        print(f"[SERIAL RX GNGGA] {line}")
 
-            # C. Periodically send NMEA GGA position to SatRef Caster (every 5 seconds)
+            # C. Periodically send NMEA GGA position back to SatRef Caster (every 1.0 second) & Print
             current_time = time.time()
-            if current_time - last_gga_sent_time >= 5.0:
+            if current_time - last_gga_sent_time >= 1.0:
                 sock.sendall(CURRENT_GGA.encode("ascii"))
                 print(
-                    f"[TEENSY -> NTRIP CASTER] Sent GGA: {CURRENT_GGA.strip()}"
+                    f"[NTRIP TX GGA] Sent position to Caster: {CURRENT_GGA.strip()}"
                 )
                 last_gga_sent_time = current_time
 
-            time.sleep(0.01)
+            time.sleep(0.005)
 
     except KeyboardInterrupt:
         print("\n[INFO] Exiting script cleanly...")
